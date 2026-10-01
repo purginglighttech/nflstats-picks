@@ -9,9 +9,8 @@
 //   - one dev user: dev@example.com / password `dev-password-change-me`
 //     (email pre-verified), with a profile and default settings
 //
-// The dev password is hashed with node:crypto scrypt and stored in a
-// self-describing `scrypt$N$r$p$saltHex$keyHex` format. If sibling C's auth
-// stack uses a different algorithm, re-hash on first login (upgrade-on-login).
+// The dev password is hashed with argon2id, the same algorithm as the auth
+// stack (apps/web/src/lib/auth), so the seeded user can sign in directly.
 //
 // Usage:  NODE_ENV=development node db/seed-dev.mjs
 // Env:    DATABASE_URL (required)
@@ -19,7 +18,7 @@
 // Only node built-ins + the `pg` package.
 // ============================================================================
 
-import { randomBytes, scryptSync } from 'node:crypto';
+import argon2 from 'argon2';
 import pg from 'pg';
 
 const { Client } = pg;
@@ -69,10 +68,8 @@ const DEV_EMAIL = 'dev@example.com';
 const DEV_DISPLAY_NAME = 'devuser';
 const DEV_PASSWORD = 'dev-password-change-me';
 
-function devPasswordHash() {
-  const salt = randomBytes(16);
-  const key = scryptSync(DEV_PASSWORD, salt, 64, { N: 16384, r: 8, p: 1 });
-  return `scrypt$16384$8$1$${salt.toString('hex')}$${key.toString('hex')}`;
+async function devPasswordHash() {
+  return argon2.hash(DEV_PASSWORD, { type: argon2.argon2id });
 }
 
 async function main() {
@@ -133,12 +130,13 @@ async function main() {
     const poolId = poolRows[0].id;
 
     // Dev user ---------------------------------------------------------------
+    const devHash = await devPasswordHash();
     const { rows: userRows } = await client.query(
       `INSERT INTO users (email, password_hash, email_verified_at)
        VALUES ($1, $2, now())
        ON CONFLICT (email) DO UPDATE SET email_verified_at = COALESCE(users.email_verified_at, now())
        RETURNING id`,
-      [DEV_EMAIL, devPasswordHash()]
+      [DEV_EMAIL, devHash]
     );
     const userId = userRows[0].id;
 
