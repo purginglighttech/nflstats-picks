@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment files (never commit real credentials)
+.env*
+!.env.example
+
+# Local dev database (embedded-postgres data dir)
+.pgdata-dev/
+.pgdata-dev.lock
+
+# Local dev mail outbox (used by notification tooling later)
+.dev-outbox/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Package build output (e.g. packages/contracts/dist)
+dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,33 @@
+# Fly.io deployment config — CONFIG ONLY.
+#
+# Deploy is BLOCKED until the user provides Fly.io credentials
+# (see README.md "Deployment"). No credentials are stored here.
+#
+# Per spec: staging and production each get their OWN database and
+# credentials; migrations run (backward-compatible only) BEFORE code deploy.
+
+app = "nfl-pickem-web" # placeholder — replace with the real Fly app name
+primary_region = "sjc" # close to Sparks, NV; adjust as needed
+
+[build]
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024

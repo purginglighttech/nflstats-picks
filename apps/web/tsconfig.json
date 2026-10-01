@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      // Monorepo-local resolution of the contracts package: typecheck (and
+      // editors) read the TypeScript sources directly so `npm run typecheck`
+      // works on a fresh clone without building contracts first. Runtime
+      // bundling still resolves the built dist/ via the package exports map —
+      // the web build compiles contracts first (see the build script).
+      "@pickem/contracts": ["../../packages/contracts/src/index.ts"],
+      "@pickem/contracts/*": ["../../packages/contracts/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
