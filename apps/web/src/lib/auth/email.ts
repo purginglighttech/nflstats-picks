@@ -56,23 +56,34 @@ async function writeOutbox(kind: "verify" | "reset", to: string, url: string): P
 
 /**
  * Phase-1 sender. In development it writes the link to `.dev-outbox/` and
- * echoes it to the console; in production (NODE_ENV=production) it refuses
- * to silently swallow mail and throws, so a real provider must be wired
- * before shipping.
+ * echoes it to the console. In production no mail provider is wired yet, and
+ * the container runs as a non-root user that cannot write an outbox to disk —
+ * so instead of crashing on the filesystem write, it logs the link for the
+ * staging operator to complete verification from the app logs. This is a
+ * stopgap until a real provider implements `EmailSender`; it must not be
+ * treated as delivered mail.
  */
 export class DevOutboxEmailSender implements EmailSender {
   async sendVerificationEmail({ to, verifyUrl }: VerificationEmail): Promise<void> {
-    await writeOutbox("verify", to, verifyUrl);
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[dev-outbox] verification link for ${to}: ${verifyUrl}`);
+    if (process.env.NODE_ENV === "production") {
+      console.log(
+        `[email-staging] NO MAIL PROVIDER — verification link for ${to}: ${verifyUrl}`,
+      );
+      return;
     }
+    await writeOutbox("verify", to, verifyUrl);
+    console.log(`[dev-outbox] verification link for ${to}: ${verifyUrl}`);
   }
 
   async sendPasswordResetEmail({ to, resetUrl }: PasswordResetEmail): Promise<void> {
-    await writeOutbox("reset", to, resetUrl);
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[dev-outbox] password-reset link for ${to}: ${resetUrl}`);
+    if (process.env.NODE_ENV === "production") {
+      console.log(
+        `[email-staging] NO MAIL PROVIDER — password-reset link for ${to}: ${resetUrl}`,
+      );
+      return;
     }
+    await writeOutbox("reset", to, resetUrl);
+    console.log(`[dev-outbox] password-reset link for ${to}: ${resetUrl}`);
   }
 }
 
