@@ -25,14 +25,14 @@ if (!Number.isInteger(season) || !Number.isInteger(week) || week < 1) {
 }
 
 try {
-  const { digest, recordsProcessed, quarantined, gamesImported } = await runWeek({
-    season,
-    week,
-  });
+  const result = await runWeek({ season, week });
+  // weekDigest() returns { counts, digest }; tolerate a plain string too.
+  const digestHex =
+    typeof result.digest === 'string' ? result.digest : result.digest?.digest;
   console.log(
     `ingest-week: season ${season} week ${week} OK — ` +
-      `${gamesImported} games, ${recordsProcessed} records, ` +
-      `${quarantined} quarantined, digest ${digest.slice(0, 12)}…`,
+      `${result.gamesImported} games, ${result.recordsProcessed} records, ` +
+      `${result.quarantined} quarantined, digest ${String(digestHex).slice(0, 12)}…`,
   );
 } catch (err) {
   console.error(`ingest-week: season ${season} week ${week} FAILED:`, err?.message ?? err);
