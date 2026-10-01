@@ -65,6 +65,87 @@ export const BallotScheduleResponseSchema = z.object({
 });
 export type BallotScheduleResponse = z.infer<typeof BallotScheduleResponseSchema>;
 
+/** GET /api/v1/weeks — every ingested week of the latest season, by week number. */
+export const WeeksListResponseSchema = z.object({
+  weeks: z.array(WeekSchema),
+});
+export type WeeksListResponse = z.infer<typeof WeeksListResponseSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Box scores                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One normalized team-game metric. display_value is the provider's verbatim
+ * display string and the display source of truth (Phase 2 decision);
+ * metric_value is the parsed numeric beside it. position preserves the
+ * provider's row order within the game.
+ */
+export const TeamGameStatSchema = z.object({
+  team_id: NflTeamSchema,
+  metric_key: z.string(),
+  display_label: z.string().nullable(),
+  display_value: z.string().nullable(),
+  metric_value: z.number().nullable(),
+  unit: z.string().nullable(),
+  category: z.string().nullable(),
+  position: z.number().int(),
+});
+export type TeamGameStat = z.infer<typeof TeamGameStatSchema>;
+
+/**
+ * One normalized player-game metric. display_value carries the provider's
+ * verbatim raw string (raw_value); metric_value the parsed numeric.
+ * team_id is null when the row predates team attribution (migration 010)
+ * and the player was not among the game's recorded leaders.
+ */
+export const PlayerGameStatSchema = z.object({
+  team_id: NflTeamSchema.nullable(),
+  player_name: z.string().nullable(),
+  category_key: z.string(),
+  category_label: z.string().nullable(),
+  metric_key: z.string(),
+  display_label: z.string().nullable(),
+  display_value: z.string().nullable(),
+  metric_value: z.number().nullable(),
+  unit: z.string().nullable(),
+});
+export type PlayerGameStat = z.infer<typeof PlayerGameStatSchema>;
+
+/** A per-game category leader (rank 1..n within team + category). */
+export const GameLeaderSchema = z.object({
+  team_id: NflTeamSchema,
+  category_key: z.string(),
+  category_label: z.string().nullable(),
+  rank: z.number().int().min(1),
+  player_name: z.string().nullable(),
+  display_value: z.string().nullable(),
+  metric_value: z.number().nullable(),
+});
+export type GameLeader = z.infer<typeof GameLeaderSchema>;
+
+/** Points by scoring period (quarters, then overtime). */
+export const ScoringPeriodSchema = z.object({
+  team_id: NflTeamSchema,
+  period_number: z.number().int().min(1),
+  points: z.number().int().min(0),
+});
+export type ScoringPeriod = z.infer<typeof ScoringPeriodSchema>;
+
+/**
+ * GET /api/v1/games/[id] — the canonical game page payload. One URL serves
+ * all three life phases (scheduled preview, in-progress, final report card);
+ * the box-score sections populate as the ingest pipeline delivers them.
+ */
+export const GameBoxScoreResponseSchema = z.object({
+  game: GameSchema,
+  periods: z.array(ScoringPeriodSchema),
+  team_stats: z.array(TeamGameStatSchema),
+  player_stats: z.array(PlayerGameStatSchema),
+  leaders: z.array(GameLeaderSchema),
+});
+export type GameBoxScoreResponse = z.infer<typeof GameBoxScoreResponseSchema>;
+
 /* ------------------------------------------------------------------ */
 /* Picks                                                               */
 /* ------------------------------------------------------------------ */
@@ -79,6 +160,16 @@ export const PickSchema = z.object({
   locked: z.boolean(),
 });
 export type Pick = z.infer<typeof PickSchema>;
+
+/**
+ * GET /api/v1/weeks/[id]/picks — the authenticated member's own saved picks
+ * for every game of the week. Owner-only; never another participant's picks.
+ */
+export const WeekPicksResponseSchema = z.object({
+  week_id: EntityIdSchema,
+  picks: z.array(PickSchema),
+});
+export type WeekPicksResponse = z.infer<typeof WeekPicksResponseSchema>;
 
 /**
  * PUT /api/v1/games/[id]/pick — save or revise a pick.
@@ -116,12 +207,39 @@ export const PickRevealSummarySchema = z.object({
     z.object({
       team_id: NflTeamSchema,
       pick_count: z.number().int().min(0),
+      /** Share of ALL eligible participants (spec: the two shares may total < 1). */
       share: z.number().min(0).max(1),
     }),
   ).length(2),
   total_picks: z.number().int().min(0),
+  /**
+   * Explicit denominator (spec: "12 of 18 participants picked"). Eligible =
+   * active global-pool members whose membership predates the game's lock_at.
+   */
+  eligible_participants: z.number().int().min(0),
 });
 export type PickRevealSummary = z.infer<typeof PickRevealSummarySchema>;
+
+/** One revealed participant on a post-lock team-detail list. */
+export const RevealParticipantSchema = z.object({
+  user_id: EntityIdSchema,
+  display_name: DisplayNameSchema,
+});
+export type RevealParticipant = z.infer<typeof RevealParticipantSchema>;
+
+/**
+ * GET /api/v1/games/[id]/picks?team_id={team} — post-lock participant list
+ * for one team. Server-side pagination; the list is complete across pages.
+ */
+export const RevealParticipantListResponseSchema = z.object({
+  game_id: EntityIdSchema,
+  team_id: NflTeamSchema,
+  participants: z.array(RevealParticipantSchema),
+  total: z.number().int().min(0),
+  /** Opaque cursor for the next page; absent when the list is complete. */
+  next_cursor: z.string().nullable(),
+});
+export type RevealParticipantListResponse = z.infer<typeof RevealParticipantListResponseSchema>;
 
 /* ------------------------------------------------------------------ */
 /* Standings (spec decision #4: most correct, then accuracy, then        */
@@ -134,11 +252,22 @@ export const WeeklyStandingSchema = z.object({
   display_name: DisplayNameSchema,
   wins: z.number().int().min(0),
   losses: z.number().int().min(0),
+  ties: z.number().int().min(0),
   /** Locked games with no saved pick: a loss in standings, a "miss" on the ledger. */
   misses: z.number().int().min(0),
-  /** W / (W + L); misses count as losses; ties excluded. */
-  accuracy: z.number().min(0).max(1),
+  /**
+   * W / (W + L); misses count as losses; ties excluded. Null when W + L is
+   * zero — renders as an em dash, never as zero (spec).
+   */
+  accuracy: z.number().min(0).max(1).nullable(),
+  /**
+   * Spec decision #4 rank order: most correct picks, then accuracy, then
+   * most completed eligible picks, then shared rank. Standard competition
+   * ranking: tied participants share the rank (1, 2, 2, 4).
+   */
   rank: z.number().int().min(1),
+  /** Leader's correct-pick total minus this participant's (never fractional). */
+  games_behind: z.number().int().min(0),
   updated_at: IsoDateTimeSchema,
 });
 export type WeeklyStanding = z.infer<typeof WeeklyStandingSchema>;
@@ -157,10 +286,14 @@ export const SeasonStandingSchema = z.object({
   display_name: DisplayNameSchema,
   wins: z.number().int().min(0),
   losses: z.number().int().min(0),
+  ties: z.number().int().min(0),
   misses: z.number().int().min(0),
-  accuracy: z.number().min(0).max(1),
+  /** W / (W + L); misses count as losses; ties excluded; null renders as —. */
+  accuracy: z.number().min(0).max(1).nullable(),
+  /** Graded, non-void outcomes (wins + losses + ties): tie-break #3. */
   completed_picks: z.number().int().min(0),
   rank: z.number().int().min(1),
+  games_behind: z.number().int().min(0),
   updated_at: IsoDateTimeSchema,
 });
 export type SeasonStanding = z.infer<typeof SeasonStandingSchema>;

@@ -18,7 +18,7 @@ import {
   SigninRequestSchema,
   VerifyEmailQuerySchema,
 } from "./auth.js";
-import { ApiErrorSchema, ApiOkSchema } from "./common.js";
+import { ApiErrorSchema, ApiOkSchema, NflTeamSchema } from "./common.js";
 import {
   DeletePushDeviceParamsSchema,
   PatchNotificationPreferencesRequestSchema,
@@ -29,9 +29,11 @@ import {
 } from "./me.js";
 import {
   BallotScheduleResponseSchema,
+  GameBoxScoreResponseSchema,
   SavePickParamsSchema,
   SavePickRequestSchema,
   WeeklyStandingsResponseSchema,
+  WeeksListResponseSchema,
 } from "./competition.js";
 
 export interface RateLimitBudget {
@@ -176,11 +178,49 @@ export const ROUTES_V1: Record<string, Record<string, RouteSpec>> = {
       // (kept as a comment to avoid a runtime schema dependency cycle)
     },
   },
+  "/api/v1/weeks": {
+    GET: {
+      auth: "none",
+      description: "Every ingested week of the latest season, ordered by week number.",
+      // Response shape reference:
+      // WeeksListResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
+    },
+  },
   "/api/v1/weeks/[id]/standings": {
     GET: {
       auth: "none",
       params: z.object({ id: z.string().min(1).max(64) }),
-      description: "Weekly ranking. Phase 1: 501 not_implemented (scoring lands in Phase 3+).",
+      description: "Weekly ranking (spec decision #4 order; shared rank on ties).",
+      // Response shape reference:
+      // WeeklyStandingsResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
+    },
+  },
+  "/api/v1/weeks/[id]/picks": {
+    GET: {
+      auth: "session",
+      params: z.object({ id: z.string().min(1).max(64) }),
+      description:
+        "The authenticated member's own saved picks for the week (owner-only).",
+      // Response shape reference:
+      // WeekPicksResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
+    },
+  },
+  "/api/v1/seasons/[id]/standings": {
+    GET: {
+      auth: "none",
+      params: z.object({ id: z.string().min(1).max(64) }),
+      description: "Season ranking, summed from weekly projections (spec decision #4 order).",
+      // Response shape reference:
+      // SeasonStandingsResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
+    },
+  },
+  "/api/v1/games/[id]": {
+    GET: {
+      auth: "none",
+      params: z.object({ id: z.string().min(1).max(64) }),
+      description: "Canonical game page payload: game plus box-score sections (periods, team stats, player stats, leaders).",
+      // Response shape reference:
+      // GameBoxScoreResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
     },
   },
   "/api/v1/games/[id]/pick": {
@@ -190,7 +230,25 @@ export const ROUTES_V1: Record<string, Record<string, RouteSpec>> = {
       body: SavePickRequestSchema,
       rateLimit: per10m(120),
       description:
-        "Save or revise a pick. Phase 1: auth + validation + game-exists check run; the write itself returns 501 not_implemented until Phase 3.",
+        "Save or revise a pick. Server-time lock enforced; idempotency key required; verified email + active pool membership required.",
+      // Response shape reference:
+      // SavePickResponseSchema (kept as a comment to avoid a runtime schema dependency cycle)
+    },
+  },
+  "/api/v1/games/[id]/picks": {
+    GET: {
+      auth: "session",
+      params: z.object({ id: z.string().min(1).max(64) }),
+      query: z.object({
+        team_id: NflTeamSchema.optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(25),
+        cursor: z.string().min(1).max(128).optional(),
+      }),
+      rateLimit: per10m(120),
+      description:
+        "Own pick pre-lock; post-lock two-team count/share summary. With team_id post-lock: paginated participant list for that team.",
+      // Response shape references:
+      // OwnPickResponseSchema | PickRevealSummarySchema | RevealParticipantListResponseSchema
     },
   },
 };
@@ -204,5 +262,10 @@ export const V1_OK_ENVELOPE = ApiOkSchema;
 
 // Re-export the response shapes referenced by the manifest comments above so
 // consumers can import them from one place.
-export { BallotScheduleResponseSchema, WeeklyStandingsResponseSchema };
+export {
+  BallotScheduleResponseSchema,
+  GameBoxScoreResponseSchema,
+  WeeklyStandingsResponseSchema,
+  WeeksListResponseSchema,
+};
 export type { RouteSpec as V1RouteSpec, RateLimitBudget as V1RateLimitBudget };

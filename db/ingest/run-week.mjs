@@ -24,6 +24,7 @@ import pg from 'pg';
 
 import { fetchScoreboard, fetchSummary } from './espn.mjs';
 import { fetchTeamWeek as fetchNflverseTeamWeek } from './nflverse.mjs';
+import { gradeWeek } from '../grade/grade.mjs';
 import {
   normalizeScoreboardEvent,
   normalizeSummary,
@@ -298,7 +299,21 @@ export async function runWeek({ season, week, provider = PROVIDER }) {
 
     const digest = await weekDigest(client, season, week);
     await finishSyncRun(client, syncRunId, { status: 'succeeded', recordsProcessed });
-    return { digest, recordsProcessed, quarantined, gamesImported };
+
+    // Phase 3: grade on every successful import so standings refresh as games
+    // finalize. Grading is idempotent; its failure must not fail the import
+    // (the operator can re-run db/grade-week.mjs), so it runs after the sync
+    // run is recorded as succeeded and logs a warning on failure.
+    let grading = null;
+    try {
+      grading = await gradeWeek({ season, week });
+    } catch (err) {
+      console.warn(
+        `runWeek: post-import grading failed for season ${season} week ${week}: ${err.message}`
+      );
+    }
+
+    return { digest, recordsProcessed, quarantined, gamesImported, grading };
   } catch (err) {
     if (syncRunId) {
       await finishSyncRun(client, syncRunId, { status: 'failed', recordsProcessed, error: err.message });

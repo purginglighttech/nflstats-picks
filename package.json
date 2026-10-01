@@ -29,7 +29,7 @@
     "test": "vitest run && npm run test:pipeline",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "worker": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@127.0.0.1:54329/pickem_dev} node db/worker.mjs",
-    "test:pipeline": "node --test \"db/ingest/*.test.mjs\"",
+    "test:pipeline": "node --test \"db/ingest/*.test.mjs\" \"db/grade/*.test.mjs\"",
     "ingest-week": "node db/enqueue.mjs ingest-week",
     "ingest:stale": "node db/enqueue.mjs stale"
   },

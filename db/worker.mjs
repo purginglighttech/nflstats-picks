@@ -23,6 +23,7 @@
 import pg from 'pg';
 
 import { runWeek } from './ingest/run-week.mjs';
+import { gradeWeek } from './grade/grade.mjs';
 
 const { Pool } = pg;
 
@@ -67,6 +68,30 @@ const HANDLERS = {
       `[${WORKER_ID}] ingest_week season=${season} week=${week}: ` +
         `${result.gamesImported} games, ${result.recordsProcessed} records, ` +
         `${result.quarantined} quarantined, digest=${result.digest.digest}`
+    );
+  },
+
+  /**
+   * Deadline sweep + grading + standings projection for one week.
+   * Payload: { type: 'grade_week', season: 2026, week: N }
+   * Idempotent: safe to re-run; corrections regrade deterministically.
+   */
+  async grade_week(client, job) {
+    const p = job.payload || {};
+    const season = Number(p.season);
+    const week = Number(p.week);
+    if (!Number.isInteger(season) || !Number.isInteger(week) || week < 1) {
+      throw new Error(
+        `grade_week: invalid payload ${JSON.stringify({ season: p.season, week: p.week })}`
+      );
+    }
+    // gradeWeek manages its own pool; the worker's client is unused here.
+    void client;
+    const result = await gradeWeek({ season, week });
+    console.log(
+      `[${WORKER_ID}] grade_week season=${season} week=${week}: ` +
+        `${result.swept} swept, ${result.committed} committed, ` +
+        `${result.misses} misses, ${result.graded} graded`
     );
   },
 };
