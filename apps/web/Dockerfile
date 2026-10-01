@@ -36,6 +36,10 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
+# Database migrations + the pg driver they need, for the release command.
+COPY --from=builder /app/db ./db
+COPY --from=deps /app/node_modules/pg ./node_modules/pg
+
 USER nextjs
 EXPOSE 3000
 

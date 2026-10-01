@@ -6,10 +6,15 @@
 # Per spec: staging and production each get their OWN database and
 # credentials; migrations run (backward-compatible only) BEFORE code deploy.
 
-app = "nfl-pickem-web" # placeholder — replace with the real Fly app name
+app = "nflstats-picks"
 primary_region = "sjc" # close to Sparks, NV; adjust as needed
 
 [build]
+
+[deploy]
+  # Per spec: backward-compatible migrations run BEFORE the new code goes live.
+  # DATABASE_URL is provided by `fly postgres attach`.
+  release_command = "node db/run-migrations.mjs"
 
 [env]
   PORT = "3000"
