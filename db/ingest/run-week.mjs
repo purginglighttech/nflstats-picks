@@ -64,15 +64,32 @@ function safeName(s) {
   return String(s).replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
-/** Write the raw provider response bytes to the archive; returns raw_ref. */
+/** Write the raw provider response bytes to the archive; returns raw_ref.
+ *
+ * Best-effort: the archive is provenance, not the import itself. If the
+ * filesystem is not writable (e.g. a read-only production container), the
+ * import must not fail — warn once and return null. provider_payloads still
+ * records the sha256 checksum, so dedupe and idempotency are unaffected.
+ */
+let archiveWarned = false;
 export async function archivePayload(provider, resourceType, objectId, payload) {
   const dir = archiveDir();
   const rel = join(provider, resourceType, `${safeName(objectId)}.json.gz`);
   const full = join(dir, rel);
-  await mkdir(dirname(full), { recursive: true });
-  const bytes = Buffer.from(JSON.stringify(payload), 'utf8');
-  await pipeline(Readable.from([bytes]), createGzip({ level: 9 }), createWriteStream(full));
-  return rel;
+  try {
+    await mkdir(dirname(full), { recursive: true });
+    const bytes = Buffer.from(JSON.stringify(payload), 'utf8');
+    await pipeline(Readable.from([bytes]), createGzip({ level: 9 }), createWriteStream(full));
+    return rel;
+  } catch (err) {
+    if (!archiveWarned) {
+      archiveWarned = true;
+      console.warn(
+        `[ingest] raw archive not writable (${dir}): ${err.message} — continuing without raw snapshots`,
+      );
+    }
+    return null;
+  }
 }
 
 /**
