@@ -14,7 +14,7 @@ primary_region = "sjc" # close to Sparks, NV; adjust as needed
 [deploy]
   # Per spec: backward-compatible migrations run BEFORE the new code goes live.
   # DATABASE_URL is provided by `fly postgres attach`.
-  release_command = "node db/run-migrations.mjs"
+  release_command = "node /app/db/run-migrations.mjs"
 
 [env]
   PORT = "3000"
@@ -25,7 +25,7 @@ primary_region = "sjc" # close to Sparks, NV; adjust as needed
   force_https = true
   auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [http_service.concurrency]
     type = "connections"
