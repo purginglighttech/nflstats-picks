@@ -7,14 +7,22 @@
  */
 import type {
   Game,
+  GameBoxScore,
   Me,
   MemberSettings,
+  OwnPickResponse,
+  Pick,
+  PickRevealSummary,
   Profile,
   ProfilePatch,
+  RevealParticipantListResponse,
+  SeasonStandingsResponse,
   SettingsPatch,
   TeamFollow,
   TeamFollowOrderUpdate,
   Week,
+  WeekPicksResponse,
+  WeeklyStandingsResponse,
 } from './types';
 
 export class ApiError extends Error {
@@ -156,6 +164,21 @@ export async function getWeekGames(weekId: string): Promise<Game[]> {
   return body.games ?? [];
 }
 
+/** Contracts: GET /api/v1/weeks -> { weeks: Week[] }. */
+export async function getWeeks(): Promise<Week[]> {
+  const body = await get<{ weeks: Week[] } | Week[]>('/weeks');
+  if (Array.isArray(body)) return body;
+  return body.weeks ?? [];
+}
+
+/**
+ * Contracts: GET /api/v1/games/[id] -> GameBoxScore.
+ * Throws ApiError(404) when the game does not exist.
+ */
+export async function getGameBoxScore(gameId: string): Promise<GameBoxScore> {
+  return get<GameBoxScore>(`/games/${encodeURIComponent(gameId)}`);
+}
+
 /** Contracts: POST /api/v1/auth/signout (session auth; revokes + clears cookie). */
 export async function signOut(): Promise<void> {
   const res = await fetch('/api/v1/auth/signout', {
@@ -163,4 +186,97 @@ export async function signOut(): Promise<void> {
     credentials: 'same-origin',
   });
   if (!res.ok) throw new ApiError(res.status, null, 'Sign out failed');
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 3: picks, reveal, standings                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Save or revise a pick. Contracts: PUT /api/v1/games/[id]/pick
+ * -> { pick }. A fresh idempotency key is minted per call so retries of
+ * the same user action replay instead of duplicating.
+ */
+export async function savePick(
+  gameId: string,
+  selectedTeamId: string,
+): Promise<Pick> {
+  const body = await request<{ pick: Pick }>(
+    `/games/${encodeURIComponent(gameId)}/pick`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        selected_team_id: selectedTeamId,
+        idempotency_key: crypto.randomUUID(),
+      }),
+    },
+  );
+  return body.pick;
+}
+
+/**
+ * The member's own saved picks for a week. Contracts:
+ * GET /api/v1/weeks/[id]/picks -> { week_id, picks }.
+ */
+export async function getWeekPicks(weekId: string): Promise<Pick[]> {
+  const body = await get<WeekPicksResponse>(
+    `/weeks/${encodeURIComponent(weekId)}/picks`,
+  );
+  return body.picks;
+}
+
+/**
+ * Per-game pick state. Contracts: GET /api/v1/games/[id]/picks ->
+ * pre-lock { pick, locked: false } (own pick only); post-lock the reveal
+ * summary { game_id, locked: true, teams, total_picks,
+ * eligible_participants }.
+ */
+export async function getGamePicks(
+  gameId: string,
+): Promise<OwnPickResponse | PickRevealSummary> {
+  return get<OwnPickResponse | PickRevealSummary>(
+    `/games/${encodeURIComponent(gameId)}/picks`,
+  );
+}
+
+/**
+ * Post-lock participant list for one team. Contracts:
+ * GET /api/v1/games/[id]/picks?team_id= -> paginated
+ * { participants, total, next_cursor }.
+ */
+export async function getRevealParticipants(
+  gameId: string,
+  teamId: string,
+  limit = 25,
+  cursor?: string,
+): Promise<RevealParticipantListResponse> {
+  const params = new URLSearchParams({ team_id: teamId, limit: String(limit) });
+  if (cursor) params.set('cursor', cursor);
+  return get<RevealParticipantListResponse>(
+    `/games/${encodeURIComponent(gameId)}/picks?${params.toString()}`,
+  );
+}
+
+/**
+ * Weekly ranking. Contracts: GET /api/v1/weeks/[id]/standings ->
+ * { week_id, standings, updated_at }.
+ */
+export async function getWeeklyStandings(
+  weekId: string,
+): Promise<WeeklyStandingsResponse> {
+  return get<WeeklyStandingsResponse>(
+    `/weeks/${encodeURIComponent(weekId)}/standings`,
+  );
+}
+
+/**
+ * Season ranking. Contracts: GET /api/v1/seasons/[id]/standings ->
+ * { season, standings, updated_at }. `seasonRef` is a year or UUID.
+ */
+export async function getSeasonStandings(
+  seasonRef: string,
+): Promise<SeasonStandingsResponse> {
+  return get<SeasonStandingsResponse>(
+    `/seasons/${encodeURIComponent(seasonRef)}/standings`,
+  );
 }

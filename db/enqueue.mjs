@@ -59,6 +59,21 @@ async function cmdIngestWeek(pool, args) {
   console.log(`enqueued ingest_week job ${rows[0].id} (season=${season} week=${week} provider=${provider})`);
 }
 
+async function cmdGradeWeek(pool, args) {
+  const season = Number(args.season);
+  const week = Number(args.week);
+  if (!Number.isInteger(season) || season < 2000) fail('--season must be a year (e.g. 2026)');
+  if (!Number.isInteger(week) || week < 1 || week > 22) fail('--week must be 1..22');
+  const payload = { type: 'grade_week', season, week };
+  const { rows } = await pool.query(
+    `INSERT INTO jobs (payload, status, run_at, max_attempts)
+     VALUES ($1, 'queued', now(), 5)
+     RETURNING id`,
+    [JSON.stringify(payload)]
+  );
+  console.log(`enqueued grade_week job ${rows[0].id} (season=${season} week=${week})`);
+}
+
 async function cmdList(pool, args) {
   const limit = Math.min(Number(args.limit) || 20, 100);
   const { rows } = await pool.query(
@@ -128,10 +143,11 @@ async function main() {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
   try {
     if (cmd === 'ingest-week') await cmdIngestWeek(pool, args);
+    else if (cmd === 'grade-week') await cmdGradeWeek(pool, args);
     else if (cmd === 'list') await cmdList(pool, args);
     else if (cmd === 'stale') await cmdStale(pool, args);
     else {
-      fail('usage: enqueue.mjs <ingest-week|list|stale> [options]');
+      fail('usage: enqueue.mjs <ingest-week|list|stale|grade-week> [options]');
     }
   } finally {
     await pool.end();

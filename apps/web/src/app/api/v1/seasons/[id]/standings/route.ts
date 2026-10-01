@@ -3,35 +3,30 @@ import { z } from "zod";
 import { v1 } from "@pickem/contracts";
 import { ApiErrorException, withApi } from "@/lib/api/with-api";
 import { rankStandings } from "@/lib/competition/ranking";
-import { getWeeklyStandingRows } from "@/lib/competition/store";
-import { getWeekByRef } from "@/lib/games";
+import { getSeasonByRef, getSeasonStandingRows } from "@/lib/competition/store";
 
 /**
- * GET /api/v1/weeks/[id]/standings — weekly ranking (Phase 3).
+ * GET /api/v1/seasons/[id]/standings — season ranking (Phase 3).
  *
- * Rank order per spec decision #4: most correct picks, then highest
- * accuracy, then most completed eligible picks, then shared rank
- * (standard competition ranking: 1, 2, 2, 4).
- *
- * Public participant data only: display name + competition numbers.
- * Email and auth metadata are never exposed.
+ * `id` is a season year (e.g. 2026) or a season UUID. Weekly projections
+ * are summed; the same spec-decision-#4 rank order applies.
  */
 export const GET = withApi(
-  "weeks:standings",
+  "seasons:standings",
   {
     auth: "none",
     params: z.object({ id: z.string().min(1).max(64) }),
   },
   async (_req, ctx) => {
-    const week = await getWeekByRef(ctx.params.id);
-    if (!week) {
+    const season = await getSeasonByRef(ctx.params.id);
+    if (!season) {
       throw new ApiErrorException(
         404,
-        "week_not_found",
-        `No such week: ${ctx.params.id}.`,
+        "season_not_found",
+        `No such season: ${ctx.params.id}.`,
       );
     }
-    const rows = await getWeeklyStandingRows(week.id);
+    const rows = await getSeasonStandingRows(season.year);
     const ranked = rankStandings(rows);
     const updatedAt =
       rows.length > 0
@@ -41,10 +36,10 @@ export const GET = withApi(
             .at(-1)!
         : new Date(0).toISOString();
     return NextResponse.json(
-      v1.WeeklyStandingsResponseSchema.parse({
-        week_id: week.id,
+      v1.SeasonStandingsResponseSchema.parse({
+        season: season.year,
         standings: ranked.map((r) => ({
-          week_id: week.id,
+          season: season.year,
           user_id: r.row.user_id,
           display_name: r.row.display_name,
           wins: r.row.wins,
@@ -52,6 +47,7 @@ export const GET = withApi(
           ties: r.row.ties,
           misses: r.row.misses,
           accuracy: r.accuracy,
+          completed_picks: r.completed,
           rank: r.rank,
           games_behind: r.games_behind,
           updated_at: r.row.updated_at,

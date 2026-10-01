@@ -1,21 +1,38 @@
+import { NextResponse } from "next/server";
 import { ROUTES_V1, v1 } from "@pickem/contracts";
 import {
   ApiErrorException,
-  notFound,
+  requireVerified,
   withApi,
 } from "@/lib/api/with-api";
-import { isUndefinedTableError, queryOne } from "@/lib/db";
+import { findUserById } from "@/lib/auth/users";
+import {
+  GameNotFoundError,
+  IdempotencyConflictError,
+  InvalidPickTeamError,
+  NotPoolMemberError,
+  PickLockedError,
+  savePick,
+} from "@/lib/competition/store";
 
 const budget = ROUTES_V1["/api/v1/games/[id]/pick"].PUT.rateLimit;
 
 /**
- * PUT /api/v1/games/[id]/pick — Phase 1: auth + validation + game-exists
- * check run for real; the pick write itself returns 501 not_implemented
- * until Phase 3 (server-time lock check, idempotency, append-only revisions).
+ * PUT /api/v1/games/[id]/pick — save or revise a pick (Phase 3).
  *
- * NOTE: the games table may not be migrated yet in early Phase 1; an
- * undefined-table error is treated as "no games seeded" (404) rather than a
- * 500. Remove this tolerance once sibling B's migrations are the baseline.
+ * Implements the spec's request path for a pick: verified session,
+ * active pool membership, server-time lock enforcement (kickoff minus five
+ * minutes — the server clock is the authority), idempotency-keyed upsert,
+ * and an append-only revision log.
+ *
+ * Errors:
+ * - 401 unauthorized — no/invalid session
+ * - 403 email_not_verified — verified email required for picks
+ * - 403 not_pool_member — not an active member of the global pool
+ * - 404 not_found — no such game
+ * - 400 invalid_request — team not in this game / bad payload
+ * - 409 pick_locked — at or past lock_at, or game no longer scheduled
+ * - 409 idempotency_conflict — key reused with a different payload
  */
 export const PUT = withApi(
   "games:pick",
@@ -26,22 +43,34 @@ export const PUT = withApi(
     rateLimit: budget,
   },
   async (_req, ctx) => {
-    let game: { id: string } | undefined;
-    try {
-      game = await queryOne<{ id: string }>(
-        `SELECT id FROM games WHERE id = $1`,
-        [ctx.params.id],
-      );
-    } catch (err) {
-      if (isUndefinedTableError(err)) game = undefined;
-      else throw err;
-    }
-    if (!game) throw notFound("Game not found.");
+    const user = await findUserById(ctx.session!.userId);
+    requireVerified(user ? { emailVerified: user.emailVerified } : null);
 
-    throw new ApiErrorException(
-      501,
-      "not_implemented",
-      "Pick saving lands in Phase 3 (locking, idempotency, audit).",
-    );
+    try {
+      const pick = await savePick({
+        userId: ctx.session!.userId,
+        gameId: ctx.params.id,
+        selectedTeamAbbr: ctx.body.selected_team_id,
+        idempotencyKey: ctx.body.idempotency_key,
+      });
+      return NextResponse.json(v1.SavePickResponseSchema.parse({ pick }));
+    } catch (err) {
+      if (err instanceof GameNotFoundError) {
+        throw new ApiErrorException(404, "not_found", err.message);
+      }
+      if (err instanceof PickLockedError) {
+        throw new ApiErrorException(409, "pick_locked", err.message);
+      }
+      if (err instanceof NotPoolMemberError) {
+        throw new ApiErrorException(403, "not_pool_member", err.message);
+      }
+      if (err instanceof IdempotencyConflictError) {
+        throw new ApiErrorException(409, "idempotency_conflict", err.message);
+      }
+      if (err instanceof InvalidPickTeamError) {
+        throw new ApiErrorException(400, "invalid_request", err.message);
+      }
+      throw err;
+    }
   },
 );

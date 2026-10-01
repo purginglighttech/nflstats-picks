@@ -111,3 +111,151 @@ export interface Week {
   label: string;
   status: string;
 }
+
+/**
+ * Contracts: v1/competition.ts box-score schemas.
+ * GET /api/v1/games/[id] -> GameBoxScore.
+ */
+export interface TeamGameStat {
+  team_id: string;
+  metric_key: string;
+  display_label: string | null;
+  display_value: string | null;
+  metric_value: number | null;
+  unit: string | null;
+  category: string | null;
+  position: number;
+}
+
+export interface PlayerGameStat {
+  team_id: string | null;
+  player_name: string | null;
+  category_key: string;
+  category_label: string | null;
+  metric_key: string;
+  display_label: string | null;
+  display_value: string | null;
+  metric_value: number | null;
+  unit: string | null;
+}
+
+export interface GameLeader {
+  team_id: string;
+  category_key: string;
+  category_label: string | null;
+  rank: number;
+  player_name: string | null;
+  display_value: string | null;
+  metric_value: number | null;
+}
+
+export interface ScoringPeriod {
+  team_id: string;
+  period_number: number;
+  points: number;
+}
+
+export interface GameBoxScore {
+  game: Game;
+  periods: ScoringPeriod[];
+  team_stats: TeamGameStat[];
+  player_stats: PlayerGameStat[];
+  leaders: GameLeader[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 3: picks, reveal, standings.                                   */
+/* Contracts: v1/competition.ts PickSchema / WeekPicksResponseSchema /  */
+/* PickRevealSummarySchema / RevealParticipantListResponseSchema /      */
+/* WeeklyStandingsResponseSchema / SeasonStandingsResponseSchema.       */
+/* ------------------------------------------------------------------ */
+
+/** Contracts: v1/competition.ts PickSchema. */
+export interface Pick {
+  game_id: string;
+  selected_team_id: string;
+  saved_at: string;
+  revision: number;
+  locked: boolean;
+}
+
+/** Contracts: v1/competition.ts WeekPicksResponseSchema. */
+export interface WeekPicksResponse {
+  week_id: string;
+  picks: Pick[];
+}
+
+/** Contracts: v1/competition.ts OwnPickResponseSchema. */
+export interface OwnPickResponse {
+  pick: Pick | null;
+  locked: boolean;
+}
+
+export interface RevealTeamSummary {
+  team_id: string;
+  pick_count: number;
+  /** Share of ALL eligible participants (the two shares may total < 1). */
+  share: number;
+}
+
+/** Contracts: v1/competition.ts PickRevealSummarySchema. */
+export interface PickRevealSummary {
+  game_id: string;
+  locked: true;
+  teams: [RevealTeamSummary, RevealTeamSummary];
+  total_picks: number;
+  eligible_participants: number;
+}
+
+/** Contracts: v1/competition.ts RevealParticipantListResponseSchema. */
+export interface RevealParticipantListResponse {
+  game_id: string;
+  team_id: string;
+  participants: Array<{ user_id: string; display_name: string }>;
+  total: number;
+  next_cursor: string | null;
+}
+
+export interface WeeklyStanding {
+  week_id: string;
+  user_id: string;
+  display_name: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  misses: number;
+  /** Null when W+L is 0 — renders as an em dash, never zero. */
+  accuracy: number | null;
+  rank: number;
+  games_behind: number;
+  updated_at: string;
+}
+
+/** Contracts: v1/competition.ts WeeklyStandingsResponseSchema. */
+export interface WeeklyStandingsResponse {
+  week_id: string;
+  standings: WeeklyStanding[];
+  updated_at: string;
+}
+
+export interface SeasonStanding {
+  season: number;
+  user_id: string;
+  display_name: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  misses: number;
+  accuracy: number | null;
+  completed_picks: number;
+  rank: number;
+  games_behind: number;
+  updated_at: string;
+}
+
+/** Contracts: v1/competition.ts SeasonStandingsResponseSchema. */
+export interface SeasonStandingsResponse {
+  season: number;
+  standings: SeasonStanding[];
+  updated_at: string;
+}
