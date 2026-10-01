@@ -22,6 +22,8 @@
 
 import pg from 'pg';
 
+import { runWeek } from './ingest/run-week.mjs';
+
 const { Pool } = pg;
 
 const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`;
@@ -43,6 +45,28 @@ const HANDLERS = {
     console.log(
       `[${WORKER_ID}] noop job ${job.id} payload:`,
       JSON.stringify(job.payload)
+    );
+  },
+
+  /**
+   * Ingest one regular-season week of game data.
+   * Payload: { type: 'ingest_week', provider?: 'espn', season: 2026, week: N }
+   * Retried by the queue on transient provider failures (max_attempts).
+   */
+  async ingest_week(client, job) {
+    const p = job.payload || {};
+    const season = Number(p.season);
+    const week = Number(p.week);
+    if (!Number.isInteger(season) || !Number.isInteger(week) || week < 1) {
+      throw new Error(
+        `ingest_week: invalid payload ${JSON.stringify({ season: p.season, week: p.week })}`
+      );
+    }
+    const result = await runWeek({ season, week, provider: p.provider || 'espn' });
+    console.log(
+      `[${WORKER_ID}] ingest_week season=${season} week=${week}: ` +
+        `${result.gamesImported} games, ${result.recordsProcessed} records, ` +
+        `${result.quarantined} quarantined, digest=${result.digest.digest}`
     );
   },
 };

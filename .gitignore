@@ -27,3 +27,6 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Raw provider snapshots (gzip archives of ingestion fetches; local evidence)
+.raw-archive/
