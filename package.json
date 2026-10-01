@@ -1,0 +1,38 @@
+{
+  "dependencies": {},
+  "description": "NFL pick'em competition website — Phase 1 foundation (workstream A scaffold).",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "name": "pickem",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "db:migrate": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@127.0.0.1:54329/pickem_dev} node db/run-migrations.mjs",
+    "db:reset": "node scripts/db.mjs reset && npm run db:migrate && npm run db:seed:dev",
+    "db:seed:dev": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@127.0.0.1:54329/pickem_dev} node db/seed-dev.mjs",
+    "db:start": "node scripts/db.mjs start",
+    "db:stop": "node scripts/db.mjs stop",
+    "dev": "npm run dev --workspace=@pickem/web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "vitest run",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "worker": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@127.0.0.1:54329/pickem_dev} node db/worker.mjs"
+  },
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "packages/contracts"
+  ]
+}
