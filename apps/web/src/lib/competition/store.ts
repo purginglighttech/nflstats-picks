@@ -327,6 +327,32 @@ export async function getWeekPicks(userId: string, weekId: string): Promise<Save
 /* Reveal (post-lock only)                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Deadline commit for one game: the lock sweep's pick-commit half, run
+ * lazily on first post-lock reveal read. Picks are only ever created or
+ * modified before lock_at (the save path rejects anything later against
+ * the server clock), so every uncommitted pick for a locked game is a
+ * legitimate pre-deadline pick. Idempotent: only committed_at IS NULL rows
+ * are touched, and committed_at is backdated to lock_at to match the
+ * grade-week sweep's convention (which becomes a no-op for commits).
+ */
+async function commitPicksAtLock(
+  client: PoolClient,
+  gameId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE picks p
+     SET committed_at = g.lock_at,
+         lock_reason = 'deadline',
+         updated_at = now()
+     FROM games g
+     WHERE p.game_id = g.id
+       AND g.id = $1
+       AND p.committed_at IS NULL`,
+    [gameId],
+  );
+}
+
 export interface RevealTeam {
   team_id: string;
   pick_count: number;
@@ -358,6 +384,11 @@ export async function getRevealSummary(gameId: string): Promise<RevealSummary> {
     if (!(lockRows[0] as { locked: boolean }).locked) {
       throw new PickLockedError("Picks for this game are still sealed.");
     }
+
+    // Commit pre-deadline picks on first post-lock read so the reveal
+    // counts them (the grade-week sweep otherwise does this only at
+    // grading time, after the reveal window).
+    await commitPicksAtLock(client, gameId);
 
     const { rows: countRows } = await client.query(
       `SELECT t.abbreviation AS team_id, count(*)::int AS pick_count
@@ -427,6 +458,10 @@ export async function getRevealParticipants(
     if (!(lockRows[0] as { locked: boolean }).locked) {
       throw new PickLockedError("Picks for this game are still sealed.");
     }
+
+    // Same lazy deadline commit as the summary: the participant list must
+    // see the same committed picks the counts were derived from.
+    await commitPicksAtLock(client, gameId);
 
     const offset = cursor ? Number.parseInt(cursor, 10) : 0;
     if (!Number.isInteger(offset) || offset < 0) {
