@@ -179,3 +179,16 @@ export async function getWeekGames(weekId: string): Promise<v1.Game[]> {
   );
   return rows.map(toGame);
 }
+
+/** Every ingested week of the latest season, ordered by week number. */
+export async function getWeeks(): Promise<v1.Week[]> {
+  const { rows } = await query<WeekRow>(
+    `${WEEK_SELECT}
+     WHERE s.league = 'NFL'
+       AND s.year = (SELECT MAX(year) FROM seasons WHERE league = 'NFL')
+     GROUP BY w.id, s.year, w.number, w.label, w.is_current
+     ORDER BY w.number`,
+  );
+  return rows.map(toWeek);
+}
+
