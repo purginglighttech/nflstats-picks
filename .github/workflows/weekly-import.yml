@@ -8,7 +8,7 @@ on:
   jobs:
     import:
       runs-on: ubuntu-latest
-
+      
       steps:
         - name: Set up flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
