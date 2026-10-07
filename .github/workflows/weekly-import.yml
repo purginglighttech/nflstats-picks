@@ -11,7 +11,8 @@ on:
 
       steps:
         - name: Set up flyctl
-            uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@master
+        
         - name: Run weekly import on the production machine
-            run: flyctl ssh console -a nflstats-picks -C "node db/ingest-weekly.mjs"
-            env: FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl ssh console -a nflstats-picks -C "node db/ingest-weekly.mjs"
+        env: FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
