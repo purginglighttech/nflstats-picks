@@ -1,15 +1,19 @@
-name: Weekly NFL Import
-on:
-schedule:
-- cron: '0 13 * * 2'
+name: Weekly NFL import
 
-workflow_dispatch:
+on:
+  schedule:
+    # Tuesdays 13:00 UTC = 6:00 AM PDT — before the Tuesday picks breakdown.
+    - cron: '0 13 * * 2'
+  workflow_dispatch:
+
 jobs:
-import:
-runs-on: ubuntu-latest
-steps:
-- name: Set up flyctl
-uses: superfly/flyctl-actions/setup-flyctl@master
-- name: Run weekly import on the production machine
-run: flyctl ssh console -a nflstats-picks -C "node db/ingest-weekly.mjs"
-env: FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run weekly import on the production machine
+        run: flyctl ssh console -a nflstats-picks -C "node db/ingest-weekly.mjs"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
