@@ -258,24 +258,25 @@ export async function upsertTeamStats(client, gameIdByRef, teamIdByAbbr, rows, s
 }
 
 export async function upsertPlayerStats(client, gameIdByRef, teamIdByAbbr, rows, sourcePayloadId) {
-  void teamIdByAbbr;
   for (const r of rows) {
     const gameId = gameIdByRef.get(r.game_ref);
     if (!gameId) continue;
+    const teamId = teamIdByAbbr.get(r.team_abbr) || null;
     await client.query(
       `INSERT INTO player_game_stats
-         (game_id, player_external_id, player_name, category_key, metric_key,
+         (game_id, team_id, player_external_id, player_name, category_key, metric_key,
           display_label, metric_value, unit, raw_value, source_payload_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (game_id, player_external_id, category_key, metric_key)
        DO UPDATE SET
+         team_id = EXCLUDED.team_id,
          player_name = EXCLUDED.player_name,
          display_label = EXCLUDED.display_label,
          metric_value = EXCLUDED.metric_value,
          unit = EXCLUDED.unit,
          raw_value = EXCLUDED.raw_value,
          source_payload_id = EXCLUDED.source_payload_id`,
-      [gameId, r.player_external_id, r.player_name, r.category_key, r.metric_key,
+      [gameId, teamId, r.player_external_id, r.player_name, r.category_key, r.metric_key,
        r.metric_key, r.metric_value, null, r.raw_value, sourcePayloadId || null]
     );
   }

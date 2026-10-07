@@ -1,0 +1,1327 @@
+diff --git a/.dockerignore b/.dockerignore
+index 8b88447..9b78882 100644
+--- a/.dockerignore
++++ b/.dockerignore
+@@ -1,3 +1,3 @@
+-node_modules
+-.next
+-.git
++**/node_modules/
++**/.next/
++.git/
+diff --git a/apps/web/src/app/api/v1/games/[id]/route.ts b/apps/web/src/app/api/v1/games/[id]/route.ts
+new file mode 100644
+index 0000000..7e9ef1f
+--- /dev/null
++++ b/apps/web/src/app/api/v1/games/[id]/route.ts
+@@ -0,0 +1,31 @@
++import { NextResponse } from "next/server";
++import { z } from "zod";
++import { v1 } from "@pickem/contracts";
++import { ApiErrorException, withApi } from "@/lib/api/with-api";
++import { getGameBoxScore } from "@/lib/games";
++
++/**
++ * GET /api/v1/games/[id] — the canonical game page payload: the game plus
++ * its box-score sections (scoring periods, team stats, player stats,
++ * leaders). One URL serves all three life phases (scheduled, in_progress,
++ * final); sections the pipeline has not delivered yet come back empty.
++ * 404 with `game_not_found` when the game does not exist.
++ */
++export const GET = withApi(
++  "games:boxscore",
++  {
++    auth: "none",
++    params: z.object({ id: z.string().min(1).max(64) }),
++  },
++  async (_req, ctx) => {
++    const boxScore = await getGameBoxScore(ctx.params.id);
++    if (!boxScore) {
++      throw new ApiErrorException(
++        404,
++        "game_not_found",
++        `No such game: ${ctx.params.id}.`,
++      );
++    }
++    return NextResponse.json(v1.GameBoxScoreResponseSchema.parse(boxScore));
++  },
++);
+diff --git a/apps/web/src/app/favicon.ico b/apps/web/src/app/favicon.ico
+new file mode 100644
+index 0000000000000000000000000000000000000000..718d6fea4835ec2d246af9800eddb7ffb276240c
+GIT binary patch
+literal 25931
+zcmeHv30#a{`}aL_*G&7qml|y<+KVaDM2m#dVr!KsA!#An?kSQM(q<_dDNCpjEux83
+zLb9Z^XxbDl(w>%i@8hT6>)&Gu{h#Oeyszu?xtw#Zb1mO<?sK2}EE5RAKnxHU7lft+
+zNRAPL3?T?25I&drAjl1ssi=G|D?(7bFsgtO(2o>{pgX9699l+Qppw7jXaYf~-84xW
+z)w4x8?=youko|}Vr~(D$UX<xm7|19n6Hxvd5m6xx<*9a4%RmR{en}E&p$X-wy5A}T
+zU0^dwXVA>IbiXABHh`p1?nn8Po~fxRJv}|0e(BPs|G`(TT%kKVJAdg5*Z|x0leQq0
+zkdUBvb#>9F()jo|T~kx@OM8$9wzs~t2l;K=woNssA3l6|sx2r3+kdfVW@e^8e*E}v
+zA1y5{bRi+3Z`uD3{F7LgFJDdvm;nJilkzDku>BwXH(8ItVCXk*-lSJnR?-2UN%<G)
+zWdETe=&R39RaKR)udn|#TOgZ!e!yM=<=+`Uz{l^5UtkZ2fHDQ;UwMB}v%l$A-`~F-
+z{Qr^x^CSUf63Sry{6y#+`<sMA?dPFvg)$lC_RkFRKnCi7&P<a6>hJ){&rlvg`CDTj
+z)Bzo!3v7Ou#83zEDEFcKt(f1E0~=rqeEbTnMvWR#{+9pg%7G8y>u1OVRUSoox-ovF
+z2Ydma(;=YuBY(eI|04{hXzZD6_f(v~H;C~y5=DhAC{MMS>2fm~1H_t2$56pc$NH8(
+z5bH|<)71dV-_oCHIrzrT`2s-5w_+2CM0$95I6X8p^r!gHp+j_gd;9O<1~CEQQGS8)
+zS9Qh3#p&JM-G8rHekNmKVewU;pJRcTAog68KYo^dRo}(M<!8cv(gkb9@A>>36U4Us
+zfgYWSiHZL3;lpWT=<n~R&zm>zNAW>Dh#mB!_@Lg%$ms8N-;aPqMn+C2HqZgz&9~Eu
+z4|Kp<`$q)Uw1R?y(~S>ePdonHxpV1#eSP1B;Ogo+-Pk}6#0GsZZ5!||ev2MGdh}_m
+z{DeR7?0-1^zVs&`AV6<!ZvGbtU{7FdY&`9DeD(=q|M30$GCs(E?S0J1$e@G0#Z=wz
+zl)*a>Vt;r3`I`OI_wgs*w=eO%_#7Kepl{B<UyBc9U%rn&@xFZ-e{%i>@xiyCANc(l
+zzIyd4y|c6PXWq9-|KM8(zIk8LPk(>a)zyFWjhT!$HJ$qX1vo@d25W<<x-(q{Yn-pG
+zKTz?fwGmh&&2-F3f57**)?Xk#p#S9h^DhK{VVKE&0KR^-_MMD9nf@pDACnmVll!kp
+z3?Tha?LWW70P;AL{}cP~sW|?W|MbA09{7Kt2f!i(y>fvZQ2zUz5WRc(UnFMKHwe1|
+zWmlB1qdbiA(C0jmnV<}GfbKtmcu^2*P^O?<jWWPHxu*D53Uq)j1!ZtH3Vi&#Nd^rV
+zj`B>MBLZKt|As~ge8&AAO~2K@zbXelK|4T<{|y4`raF{=72kC2Kn(L4YyenWgrPiv
+z@^mr$t{#X5VuIMeL!7Ab6_kG$&#&5p*Z{+?5U|TZ`B!7llpVmp@skYz&n^8QfPJzL
+z0G6K_OJM9x+Wu2gfN45phANGt{7=C>i34CV{Xqlx(fWpeAoj^N0Biu`w+MVcCUyU*
+zDZuzO0>4Z6fbu^T_arWW5n!E45vX8N=bxTVeFoep_G#VmNlQzAI_KTIc{6>c+04vr
+zx@W}zE5JNSU>!THJ{J=cqjz+4{L4A{Ob9$ZJ*S1?Ggg3klFp!+Y1@K+pK1DqI|_gq
+z5ZDXVpge8-cs!o|;K73#YXZ3AShj50wBvuq3NTOZ`M&qtjj#GOFfgExjg8Gn8>Vq5
+z`85n+9|!iLCZF5$HJ$Iu($dm?8~-ofu}tEc+-pyke=3!im#6pk_Wo8IA|fJwD&~~F
+zc16osQ)EBo58U7XDuMexaPRjU@h8tXe%S{fA0NH3vGJFhuyyO!Uyl2^&EOpX{9As0
+zWj+P>{@}jxH)8|r;2HdupP!vie{sJ28b&bo!8`D^x}TE$%zXNb^X1p@0PJ86`dZyj
+z%ce7*{^oo+6%&~I!8hQy-vQ7E)0t0ybH4l%KltWOo~8cO`T=157JqL(oq_rC%ea&4
+z2NcTJe-HgFjNg-gZ$6!Y`SMHrlj}Etf7<Kk?_r;;``Uc^3+u}-v3@Q8<@$Nr`<F?K
+z-%F>?r!zQTPPSv}{so2e>Fjs1{<qUF=hGRSFDG$<z3x<+@%{Vd%a`e+qodRP&D<om
+zAEn>gzk~LGeesX%r(Lh6rbhSo_n)@@G-FTQy93;l#E)hgP@d_SGvyCp0~o(Y;Ee8{
+zdVUDbHm5`2taPUOY^MAGOw*<R_VaVlPH<<CgYr!E->>=s7=Gst=D+p+2yON!0%Hk`
+zz5mAhyT4lS*T3LS^WSxUy86q&GnoHxzQ6vm8)VS}_zuqG?+3td68_x;etQAdu@sc6
+zQJ&5|4(I?~3d-QOAODHpZ=hlSg(lBZ!JZWCtHHSj`0Wh93-Uk)_S%zsJ~aD>{`A0~
+z9{AG(e|q3g5B%wYKRxiL2Y$8(4w<boVrLOyLG9R$m+7N>6bzchKuloQW#e&S3n+P-
+z8!ds-%f;TJ1>)v)##>gd{PdS2Oc3VaR`fr=`O8QIO(6(N!A?pr5C#6fc~Ge@N%Vvu
+zaoAX2&(a6eWy_q&UwOhU)|P3J0Qc%OdhzW=F4D|pt0E4osw;%<%Dn58hAWD^XnZD=
+z>9~H(3bmLtxpF?a7su6J7M*x1By7YSUbxGi)Ot0P77`}P<HJ;%@cvfCkvm6xcMjdY
+zed_u6xK)F%|1Hy`)`e~K(f*MqTJ?92I+4lga{A5`-U@Cab35G6unNk<*dpB|Rtkp;
+z?32o^yBlJsuA-^abQ~7;%<oa^k<DbKc{lOW2!yM#nEALvv)IhY7b|Wfg(UhtiurTM
+zY-B6L26$JQo&Kt3nh3JTJ)garEgw^{uEM3__%b$U5{~+aMO*k)6R#grkER2`U6KS-
+z=j1=QhCkuy%iiHWrqH8CeGNw*C?epTpl2Bo@ugUPKRFeiVHOpL7PHu-SAgX@qmTGH
+z_%ePz1`io8XDfwLmip;Rn;1yo+3>3{)&5Un{KD?`-e?r21!4vTTnN(4Y6Lin?UkSM
+z`MXCTC1@4A4~mvz%Rh2&EwY))LeoT=*`tMoqcEXI>TZU9WTP#l?uFv+@Dn~b(>xh2
+z;>B?;Tz2SR&KVb>vGiBSB`@U7VIWFSo=LDSb9F{GF^DbmWAfpms8Sx9OX4CnBJca3
+zlj9(x!dIjN?OG1X4l*imJNvRCk}F%!?SOfiOq5y^mZW)jFL@<gIi}tCXee1<sGV$i
+z4r_`X#mEQbiDh!Efji0GjM9z-0bF}p0(*s(OzMJ|;K&OJBar<ARLp}T>a|r-@d#f7
+z2gmU8L3IZq0ynIws=}~m^#@&C%J6QFo~Mo4V`>v7MI-_!EBMMtb%_M&kvAaN)@ZVw
+z+`toz&WG#HkWDjnZE!6nk{e-oFdL^$YnbOCN}JC&{$#$O27@|Tn-skXr)2ml2~O!5
+zX+gYoxhoc7qoU?C^3~&!U?kRFtnSEecWuH0B0OvLodgUAi}8p1<ZO0#U-k07ifx!>
+zrO6RSXHH}D<I*>Mc$&|?D004<Y&c6)m74d`LOLU@ruR+Um4>DiOVMHV8kXCP@7NKB
+zgaZq^^O<7PoKEp72kby@W0Z!Y*A<g|TlOeriuPP`vK2IntATvs?Iv|J14j&;NFSFo
+zyJ+sca?G+8C%!b{Sq=6cJJqS>y{&vfg#C&gG@YVR9g?FEocMUi1gSN$+V+ayF45{a
+zuDZDT<?u;)RfLQwg>N}mS|;BO%gEf}pjBfN2-gIrU#G5~cucA;dokXW89%>AyXJJI
+z9X4Ul<x{xc_m~`mWBP0<g-{#wm}Vv~Ef3pKWC&N_<~88zSbEk;;+{DnJ9-u&Zc74s
+zJ6TCQyl_^|5cY;wmDdrU@LTL-3v0H#Ui?8ICQV{imof1MHuM$`e*ux>IWA|ZYHgbI
+z5?oFk@A=Ik7lrEQPDH!H+b`7_Y~aDb_qa=B2^Y&Ow41cU=4WDd40dp5(QS-WMN-=Y
+z9g;6_-JdNU;|6cPwf$ak*aJIcwL@1n$#l~zi{c{EW?T;DaW*E8DYq?Umtz{nJ&w-M
+zEMyT<MDk{HKbd#ckg5-pS_?QUVhZv?&Q-ioBS}$nvBd)nE7YO0deN~G(#zCJAbY$E
+z!)g3Ytl=_NDUV%pykcE+Q<{EoZ_4FR@&#d<hqs%N>DrC&9K$d|kZe2#ws6)L=7K+{
+zQw{XnV6UC$6-rW0emqm8wJoeZK)wJIcV?dST}Z;G0Arq{dVDu0&4kd%N!3F1*;*pW
+zR&qUiFzK=@44#QGw7k1`3t_d8&*kBV->O##t|tonFc2YWrL7_eqg+=+k;!F-`^b8>
+z#KWCE8%u4k@EprxqiV$VmmtiWxDLgnGu$Vs<8rppV5E<MCr+anDo)-{XRlCJ;D#M(
+zT=3WgR02;Nm!54biUb^FtzPh8iGrf412epnki-k+G4mdkzC|lJqaRMbb0~Jjp-{}I
+z5Do5afZi>ajBXL4nyyZM$SWVm!wnCj-B!Wjqj5-5dNXukI2$$|Bu3Lrw}z65Lc=1G
+z^-#WuQOj$hwNGG?*CM_TO8Bg-1+qc>J7k5c51U8g?ZU5n?HYor;~JIjoWH-G>AoUP
+ztrWWLbRNqIjW#RT*WqZgPJXU7C)VaW5}MiijYbABmzoru6EmQ*N8cVK7a3|aOB#O&
+zBl8JY2WKfmj;h#Q!pN%9o@VNLv{OUL?rixHwOZuvX7{IJ{(EdPpuVFoQqIOa7gi<U
+zTpbX&UCeYeNu>LVkBOKL@^smUA!tZ1CKRK}#SSM)iQHk)*R~?M!qkCruaS!#oIL1c
+z<cK@1=jX>?J<BS8bpdt^R+}%A_DEhF^%o}8e!!lc`Y!qU>;U~&FfH#*98^G?i}pA{
+z9Jg36t4=%6mhY(quYq*vSxptes9qy|7xSlH?G=S@>u>Ebe;|LVhs~@+06N<4CViBk
+zUiY$thvX;>Tby6z9Y1e<Q<iIG*|o$r?OTFp`s)@_nHs4LeWbGvg7^}NK)>dAMQaiH
+zm^r3v#$Q#2T=X>bsY#D%s!bhs^M9PMAcHbCc0FMHV{u-dwlL;a1eJ63v5U*?Q_8JO
+zT#50!RD619#j_Uf))0ooADz~*9&lN!bBDRUgE>Vud-i5ck%vT=r^yD*^?Mp@Q^v+V
+zG#-?gKlr}Eeqifb{|So?HM&g91<J5P5=Ly{?(NNY{6`O~L5r@sJe3rNZn06%SLk);
+z9?hvE^Hr{!*G$<_doyzGn#*z*#}?)8dH=eYTgvc)T~}Jw!kCv68<+KL5{5?EXtDAZ
+zWeNqp8%KIuBi&icn5s815Vho<+99VW1~m@L8l0=$c`t-L{q))~<!p*~vCdUcBcPz`
+zyUi}!-k_`G{>P8|av8hQoCmQXkd?7wIJw<dY^{|7OQJUHKB~nksN_|Xy;DL?xjxU^
+zbMa`WdfTBnr<wTd$mY&SgJ4U|X``k`#`gN@M+0x2W{YgC3kbLk<uYFJWglkx_)2#b
+ztRiuA!EK9o)f`I2k)l;Of%E`ff91WlZh8yfRi6#N-mC`Ma(yr~U82SyAhc9B+ur!f
+zP-3igg*KeYs9mGOAw@OaXYy9DnGjn0<m`JH&Q^h}^!h+uS9Ct*o-oEy(?iT6Yco>b
+z_^v8bbg`<ZOL)a;i=IdfK0Zvw4nXsoC?eTOMpY)_ptiORm%J(1CD3dE0Z%Vy<2iHp
+zcp>SAn{I*4bH$u(RZ6*x<DqKJ+5;a6Jq~=Y8V&c?Vsyq88!2nD?H?Eww58Mqt$7R8
+z5BMjmKx>UhuA~hc=8czK8SHEKTzSxgbwi~9(OqJB&gwb^l4+m`k*Q;_?>Y-APi1{k
+zAHQ)P)G)f|AyjSgcCFps)Fh6Bca*Xznq3<?y%xNvu0N78_R?~<RDFQx0ynlRG(E|j
+zvEGN3bF<E_9p-I!UwQXFqcSGV#e^98tgFqLp+z9eP}y!jNA{)r*a+%M-_20xg?94<
+zzmM{}syi0cd&P)zywMdS&Y_9k5JDtOM!L)b^2WP!+fHYGv>6!pV6Az&m{O8$wGFD?
+zY&O*3*J0;_EqM#jh6^gMQKpXV?#1?>$ml1xvh8nSN>-?H=V;nJIwB07YX$e6vLxH(
+zqYwQ>qxwR(i4f)DLd)-$P>T-no_c!LsN@)8`e;W@)-Hj0>nJ-}Kla4-ZdPJzI&Mce
+zv)V_j;(3ERN3_@I$N<^|4Lf`B;8n+bX@bHbcZTopEmDI*Jfl)-pFDvo6svPRoo@(x
+z);_{lY<;);XzT`dBFpRmGrr}z5u1=p<K1~3>C^<jVp}L(pzgMB_Vs-O?{Z?y$8M;)
+zi@7zwpzV9#m72%En~(9@E)GWV^(~J*@^*K*TE0mynAnGJ5YSLCEnC42H-`tr4L=oW
+zI}N{xQ$HT8Q6CVHf%RY&xw7!Zj(0xmg(K#UQ4u!ej95z7V4phlcTJ2&AR}$)zV-s!
+zO7bqY6(=?1t+JCOW_z%HRE>S-{ce6iXQlLGcItwJ^mZx{m$&DA_oEZ)B{_bYPq-HA
+zcH8WGoBG(aBU_j)vEy+_71T34@4dmSg!|M8Vf92Zj6WH7Q7t#OHQqWgFE3ARt+%!T
+z?oLovLVlnf?2c7pTc)~cc^($_8nyKwsN`RA-23ed3sdj(ys%pjjM+9JrctL;dy8a(
+z@en&CQmnV(()bu|Y%G1-4a(6x{aLytn$T-;(&{QIJB9vMox11U-1HpD@d(QkaJdEb
+zG{)+6Dos_L+O3NpWo^=gR?evp|CqEG?L&Ut#D*KLaRFOgOEK(Kq1@!EGcTfo+%A&I
+z=dLbB+d$u{sh?u)xP{PF8L%;YPPW53+@{>5W=Jt#wQpN;0_HYdw1{ksf_XhO4#2F=
+zyPx6Lx2<92L-;L5PD`zn6zwIH`Jk(<gsVPionpJ-imI56$j4P0!br@ny3=!{x2TY^
+zCD=)8_PgmN)E!^nczcDGc9Wm7oo5O3@fh=k=kh8J?_3KqEp7JHdv8z_iZ5#KmbiPt
+z2Bt8Ro^p$7pS!xL3mtj<iN3f}#r6_&$Es0PnJTE?c;0#$%cGdu`T%~`gW;c^VD-S=
+zrAatMf^%Lzr*wQ4kHSOb?WOUuEsJQ3xr{Imf1t{~iNmRwb_SP9!?FFN=b-E){!8P2
+ztWCT~262O8`%?3<W4Wg+ovWY<re)?^kZ|Yi>$?Qw({erA$^bC;q33hv!d!>%wRhj#
+zal^hk+WGNg;rJtb-EB(?czvOM=H7dl=vblBwAv>}%1@{}mnpUznfq1cE^sgsL0*4I
+zJ##!*B?=vI_OEVis5o+_IwMIRrpQyT_Sq~ZU%oY7c5JMIADzpD!Upz9h@iWg_>>~j
+zOLS;wp^i$-E?4<_cp?RiS%Rd?i;f*mOz=~(&3lo<=@(nR!_Rqiprh@weZlL!t#NCc
+zO!QTcInq|%#>OVgobj{~ixEUec`E25zJ~*DofsQdzIa@5^nOXj2T;8O`l--(QyU<o
+zeu8G~Z>^$t?TGY^7#&FQ+2SS3B#qK*k3`ye?8jUYSajE5iBbJls75CCc(m3dk{t?-
+zopcER9{Z?TC)mk~gpi^kbbu>b-+a{m#8-y2^p$ka4n60w;Sc2}HMf<8JUvh<G@KZw
+z+<GL!lpeahq2+nO{>CL0B&Btk)T`ctE$*qNW8L$`7!r^9T+>=<=2qaq-;ll2{`{Rg
+zc5a0ZUI$oG&j-qVOuKa=*v4aY#IsoM+1|c4Z)<}lEDvy;5huB@1RJPquU2U*U-;gu
+z=En2m+qjBzR#DEJDO`WU)hdd{Vj%^0V*KoyZ|5lzV87&g_j~NCjwv0uQVqXOb*QrQ
+zy|Qn`hxx(58c<SELWpDAg~83oY-J_WoDiI6d7>70$E;L(X0uZZ72M1!6oeg)(cdKO
+ze0gDaTz+ohR-#d)NbAH4x{I(21yjwvBQfmpLu$)|m{XolbgF!pmsqJ#D}(ylp6uC>
+z{bqtcI#hT#HW=wl7>p!38sKsJ`r8}lt-q%Keqy%u(xk=yiIJiUw6|5IvkS+#?JTBl
+z8H5(Q?l#wzazujH!8o>1xtn8#_w+397*<wp?Ryt$UFh41$qd}LyNJ7Oao(Aw2g|wy
+zH_nZ+R#~EUME^#j4$@^5&>_cy8!pQGP%K(Ga3pAjsaTbbXJlQF_+m+-UpUUent@xM
+zg%jqLUExj~o^vQ3Gl*>wh=_gOr2*|U64_iXb+-111a<qXXnUI&{l`dM&{4Gw)jZn;
+zlj{VxW@#OcVE1Y%J*u^Z@H+XSqL6SwA|^jv2RU_+d;O!mk)dw7-m9B4{6*G1zRdR6
+zQ}6v&Xt7R2h3Xp}EQk4nF2TULG{Ri=D|JC<a+K7dldN1}CY_f!vK#u}K3`g#TpO&W
+z;!;64`0$d9raD!VbYP`kuFUasaMh!;&81y}LHS(SuGRxwEn4LZb4DS1j9iAq$MXd@
+z(Ebka7_Gc(ljGaJqtI-OzmA@c@sYB$)Vg!RP4~``vaVyRq$rJXRjIPwtepN;(B%wy
+zmU>H}$TjeajM+I20xw(((>fej-@CIz4S1pi$(#}P7`4({6QS2CaQS4NPENDp>sAqD
+z$bH4KGzXGffkJ7R>V>)>tC)uax{UsN*dbeNC*v}#8Y#OWYwL4t$ePR?VTyIs!wea+
+z5Urmc)X|^`MG~*dS6pGSbU+gPJoq*^a=_>$n4|P^w$sMBBy@f*Z^Jg6?n5?oId6f{
+z$LW4M|4m502z0t7g<#Bx%X;9<=)smFolV&(V^(7Cv2-sxbxopQ!)*#ZRhTBpx1)Fc
+zNm1T%bONzv6@#|dz(w02AH8OXe>kQ#1FMCzO}2J_mST)+ExmBr9cva-@?;wnmWMOk
+z{3_~EX_xadgJGv&H@zK_8{(x84`}+c?oSBX*Ge3VdfTt&F}yCpFP?CpW+BE^cWY0^
+zb&uBN!Ja3UzYHK-CTyA5=L<c0d<h!DNBIa<xax8W3(Ru8L0cVXQ18|Y^|*S%)R96z
+zBT$(=zQ}2vmt6LzN~Oyf_Y92%P@QOx{7~}5!UIqCdfu?VwC0Nb!2@iiit8-5zUWFG
+z*G&+GLIU#J;}hvowNJWnglvb^<2q~lS#?ixVtYT@(O3{TC|4kFJYLB*jni-4YZi0>
+zEMW{l3Usky#ly=7px648W31UNV@K)&Ub&zP1c7%)`{);I4b0Q<)B}3;NMG2JH=X$U
+zfIW4)4n9ZM`-yRj67I)YSLDK)qfUJ_ij}a#aZN~9EXrh8eZY2&=uY%2N0UFF7<~%M
+zsB8=erOWZ>Ct_#^tHZ|*q`H;A)5;ycw*I<Cd*bZlOJ9YmRUK2<qXkpRR3nr6r~%Jz
+z*(8tA&DYO)etdgVmoonqD{*<5Fog4ClIs-~_uhjuZOI}#Wy+ce${%#oyHloXelqfz
+z8)?D3Y_>cmVxi8_0Xk}aJA^ath+E;xg!x+As(M#0=)3!NJR6H&9+zd#iP(m0PIW8$
+z1Y^VX`>jm`W!=WpF*{ioM?C9`yOR>@0q=u7o>BP-eSHqCgMDj!2anwH?s%i2p+Q7D
+zzszIf5XJpE)IG4;d_(La-xenmF(tgAxK`Y4sQ}BSJEPs6N_U2vI{8=0C_F?@7<(G;
+zo$~G=8p+076G;`}>{MQ>t>7cm=zGtfbdDXm6||jUU|?X?CaE?(<6bKDYKeHlz}DA8
+zXT={X=yp_R;HfJ9h%?eWvQ!dRgz&Su*JfNt!Wu>|XfU<MM~gB&J0gc}IH}?|B4WRK
+zWPL0FhctFGdMucOFdhrVunIe5)4K^H9IjB#eA)p5w?c#v7kp8jx^~bxxJB{;hPFL9
+zkR9Dbpj+T5ZMgHQg|oj*DS;x&jK}1rn&}Shp9sgOI*7puQD-w?3H*cg72;5H(_zW*
+zApJBIM-p2~F;qWDj!n|Kd=5|T8OPkQ_G;ujgvKybr5@~eci2{8WAz+%NUSp-&eoG!
+zOGLNLJewWl&1*NT467W3god~fYgX?!f0?NCFnjD$qE-fyQ)|Q_DLc*{olmXSVl$g_
+z$vj}o?RatMy(o*j8?q1Mgw{OUOgVR6_qvS<Co*&!cR`ROi|*I`ajyG5s@L8agnX2J
+zF=DLkMG`z{RP&996y0yAtvJcb<cba?TV#j4VYFPC>&68iRikRrHRW|ZxzRR^`eIGt
+zIeiDgVS>IeExKVRWW8-=<xUfo0v~z=RA=cFWKXgcMECd}xHp7iqkBanH}TZ0h0rA=
+zqxUZ>A=<k-RjTtwbJkkep{8z*173wY^e%-U0{Ue!n@wbg^2q)Vx5c(_RfvuR4}XXn
+z+JE>yA`}`)ZkWBrZD`hpWIxBGkh&f#ijr449~m`j6{4jiJ*C!oVA8ZC?$1RM#K(_b
+zL9TW)kN*Y4%^-qPpMP7d4)o?Nk#>aoYHT(*g)qmRUb?**F@pnNiy6Fv9rEiUqD(^O
+zzyS?nBrX63BTRYduaG(0VVG2yJRe%o&rVrLjbxTaAFTd8s;<<@Qs>u(<193R8>}2_
+zuwp{7;H2a*X7_jryzriZXMg?bTuegABb^87@SsKkr2)0Gyiax8KQWstw^v<oS3Xw7
+zu51m`3~hoyxErcHymdFTZd#AO59{EkuFTcpAR33(3xc{zRnn1~1Ei(i*^HdCvM~;;
+za&}Uip|u>#ix45EVrcEhr>!NMhprl<CqZuKa#zuI&@zymVzIicetS0bq#u?m(r_@S
+zJ79bl%4EyHCQ3fK@en+A1@)e}HWLP|gr_zuoA{}Z<(-*53Zu@k+=^%~5F(z$EFLI;
+z-TQTS8$W|GRbZq93Ha1?lu+`O;rn>$InQMzjSFH54x5k9qHc`@9uKQzvL4ihcq{^B
+zPrVR=o_ic%Y>6&rMN)hTZsI7I<3&`#(nl+3y3ys9A~<Ao%ZuW})CJ)6^(aRV(gGxR
+z89#(FDW;GZEAf;rI$+PU)rEV|rASrwP0_mr^Ldv)IuUf1M>&^=4?PL&nd8)`OfG#n
+zwAMN$1&>K++c{^|7<<q5KGu)u(OEfEJJw2aEi(;x-i=Y=j3ram9H2n-Fuqv0dVlXJ
+z&WgG5X({!vJFDrEbm+CWDca^zIe2@s1@a;;Y3!U9Q)&P0UXFmCP51_!wvTfAIyR^M
+z7^R*O@yz1b-s4VC>4P=2y(B{jJsQ0a#U;HTo4ZmWZYvI{+s;Td{Yzem%0*k#)vjpB
+zia;J&>}ICate44SFYY3vEelqStQWFihx%^vQ@Do(sOy7yR2@WNv7Y9I^yL=nZr3mb
+zXKV5t@=?-Sk|b{XMhA7ZGB@2hqsx}4xwCW!in#C<kr{U&JG{9FhoZ<aTve_lLz39>
+zI@}sc<h3gsW}hp-`WUywKA>Zlr3-NFJ@NFaJlhyfcw{k^vvtGl`N9xSo**rDW4S}i
+zM9{fMPWo%4wYDG~BZ18BD+}h|GQKc-g^{++3MY>}W_uq7jGHx{mwE9fZiPCoxN$+7
+zrODGGJrOkcPQUB(FD5aoS4g~7#6NR^ma7-!>mHuJfY5kTe6PpNNKC9GGRiu^L31uG
+z$7v`*JknQHsYB!Tm_W{a32TM099djW%5e+j0Ve_ct}IM>XLF1Ap+YvcrLV=|CKo6S
+zb+<Td{{5RWR}u2f(q<b(D$9JsF0OOzJ*+z0P5kc1t}CXlYgua%x*2lSgp|*WS3H-#
+zdYr7?GQOL18zUS<2|;+vi4|4sQBM2Gs&WVS!D`q5Lz;XR@5rEfa{uG-!q?R8Ncz%(
+z5K6~LQ@d2wp#)5q4u<ENlFbS)U4o1t9{-d>9Nl3_YdKP6%Cxy@6TxZ>;4&nTneadr
+z_ES90ydCev)LV!dN=#(*f}|ZORFdvkYBni^aLbUk>BajeWIOcmHP#8S)*2U~QKI%S
+zyrLmtPqb&TphJ;>yAxri#;{uyk`JJqODDw%(Z=2<VfJZemI(PFAD{6Sm|uE%BTbkl
+zROsg*MOh20YgGs3H7?@pmQ>`1uc}br^V%>j!gS)D*q*f_-qf8&D;W1dJgQMlaH5er
+zN2U<%Smb7==vE}dDI8K7cKz!vs^73o9f>2sgiTzWcwY|BMYHH5%Vn7#kiw&eItCqa
+zIkR2~Q}>X=Ar8W|^Ms41Fm8o6IB2_j60eOeBB1Br!boW7JnoeX6Gs)?7rW0^5psc-
+zjS16yb>dFn>KPOF;imD}e!enuIniFzv}n$m2#gCCv4jM#ArwlzZ$7@9&XkFxZ4n!V
+zj3dyiwW4Ki2QG{@i>yuZXQizw_OkZI^-3otXC{!(lUpJF33gI60ak;Uqitp74|B6I
+zgg{b=Iz}WkhCGj1M<xTd?60J5qsr1Cg7F~~U2N!(@lC<>=hu4#Aw173YxIVbISaoc
+z-nLZC*6Tgivd5V`K%GxhBsp@SUU60-rfc$=wb>zdJzXS&-5(NRRodFk;Kxk!S(<ov
+z$YXcI9;^grAyiJ4dWTv3b}K~Ww09(;mLY4+kj|$A?IMr}`7q?mIS1>O(a0e7oY=E(
+zAyS;Ow?6Q&XA+cnkCb{28_1N8H#?J!*$MmIwLq^*T_9-z^&UE@A(z9oGYtFy6EZef
+LrJugUA?W`A8`#=m
+
+literal 0
+HcmV?d00001
+
+diff --git a/apps/web/src/app/games/[id]/page.tsx b/apps/web/src/app/games/[id]/page.tsx
+new file mode 100644
+index 0000000..8440fd6
+--- /dev/null
++++ b/apps/web/src/app/games/[id]/page.tsx
+@@ -0,0 +1,481 @@
++'use client';
++
++import Link from 'next/link';
++import { useParams } from 'next/navigation';
++import { useEffect, useState } from 'react';
++import { EmptyState } from '@/components/EmptyState';
++import { ApiError, getGameBoxScore } from '@/lib/api';
++import type {
++  GameBoxScore,
++  GameLeader,
++  PlayerGameStat,
++  TeamGameStat,
++} from '@/lib/types';
++import { getTeamTheme } from '@/lib/theme/teams';
++
++type GameState =
++  | { kind: 'loading' }
++  | { kind: 'error'; message: string }
++  | { kind: 'not-found' }
++  | { kind: 'ready'; boxScore: GameBoxScore };
++
++function teamName(teamId: string | null): string {
++  if (!teamId) return 'Unknown team';
++  return getTeamTheme(teamId)?.name ?? teamId.toUpperCase();
++}
++
++function teamAbbr(teamId: string | null): string {
++  if (!teamId) return '—';
++  return getTeamTheme(teamId)?.abbr ?? teamId.toUpperCase();
++}
++
++function formatKickoff(iso: string): string {
++  const d = new Date(iso);
++  if (Number.isNaN(d.getTime())) return iso;
++  return d.toLocaleString(undefined, {
++    weekday: 'long',
++    month: 'long',
++    day: 'numeric',
++    hour: 'numeric',
++    minute: '2-digit',
++  });
++}
++
++/** "passing_completions" -> "Passing Completions". */
++function prettifyKey(key: string): string {
++  return key
++    .split('_')
++    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
++    .join(' ');
++}
++
++/**
++ * Compound team stats arrive as two rows ("3rd Down Efficiency (first of
++ * 5-16)" / "(second of 5-16)") sharing one verbatim display_value. The
++ * label suffix is provider bookkeeping; the display value is the truth.
++ */
++function baseLabel(label: string | null): string {
++  if (!label) return '—';
++  return label.replace(/\s*\((first|second) of .*\)$/, '');
++}
++
++function statValue(stat: TeamGameStat | PlayerGameStat): string {
++  if (stat.display_value !== null && stat.display_value !== '') {
++    return stat.display_value;
++  }
++  if (stat.metric_value !== null) return String(stat.metric_value);
++  return '—';
++}
++
++/* ------------------------------------------------------------------ */
++/* Scoring by quarter                                                  */
++/* ------------------------------------------------------------------ */
++
++function Linescore({ boxScore }: { boxScore: GameBoxScore }) {
++  const { game, periods } = boxScore;
++  if (periods.length === 0) return null;
++  const maxPeriod = Math.max(...periods.map((p) => p.period_number));
++  const byTeam = new Map<string, Map<number, number>>();
++  for (const p of periods) {
++    if (!byTeam.has(p.team_id)) byTeam.set(p.team_id, new Map());
++    byTeam.get(p.team_id)!.set(p.period_number, p.points);
++  }
++  const order = [game.away_team_id, game.home_team_id].filter((t) =>
++    byTeam.has(t),
++  );
++  for (const [team] of byTeam) {
++    if (!order.includes(team)) order.push(team);
++  }
++  const headers: string[] = [];
++  for (let n = 1; n <= maxPeriod; n++) {
++    headers.push(n <= 4 ? String(n) : n === 5 ? 'OT' : `OT${n - 4}`);
++  }
++  return (
++    <section aria-label="Scoring by quarter" className="mt-8">
++      <h2 className="field-label">Scoring by quarter</h2>
++      <div className="card mt-2 max-w-2xl overflow-x-auto p-4">
++        <table className="w-full text-left text-sm">
++          <thead>
++            <tr>
++              <th scope="col" className="pr-3 font-semibold">Team</th>
++              {headers.map((h) => (
++                <th key={h} scope="col" className="px-2 text-center font-semibold">
++                  {h}
++                </th>
++              ))}
++              <th scope="col" className="pl-2 text-center font-semibold">T</th>
++            </tr>
++          </thead>
++          <tbody>
++            {order.map((team) => {
++              const per = byTeam.get(team)!;
++              const total = [...per.values()].reduce((a, b) => a + b, 0);
++              return (
++                <tr key={team} className="border-t">
++                  <td className="py-1 pr-3 font-semibold">{teamAbbr(team)}</td>
++                  {headers.map((_, i) => (
++                    <td key={i} className="px-2 py-1 text-center">
++                      {per.get(i + 1) ?? '–'}
++                    </td>
++                  ))}
++                  <td className="py-1 pl-2 text-center font-bold">{total}</td>
++                </tr>
++              );
++            })}
++          </tbody>
++        </table>
++      </div>
++    </section>
++  );
++}
++
++/* ------------------------------------------------------------------ */
++/* Team stats comparison                                               */
++/* ------------------------------------------------------------------ */
++
++function TeamStats({ boxScore }: { boxScore: GameBoxScore }) {
++  const { game, team_stats } = boxScore;
++  if (team_stats.length === 0) return null;
++  const byPosition = new Map<
++    number,
++    { away?: TeamGameStat; home?: TeamGameStat }
++  >();
++  for (const s of team_stats) {
++    if (!byPosition.has(s.position)) byPosition.set(s.position, {});
++    const slot = byPosition.get(s.position)!;
++    if (s.team_id === game.away_team_id) slot.away = slot.away ?? s;
++    else if (s.team_id === game.home_team_id) slot.home = slot.home ?? s;
++  }
++  const positions = [...byPosition.keys()].sort((a, b) => a - b);
++  return (
++    <section aria-label="Team stats" className="mt-8">
++      <h2 className="field-label">Team stats</h2>
++      <div className="card mt-2 max-w-3xl overflow-x-auto p-4">
++        <table className="w-full text-left text-sm">
++          <thead>
++            <tr>
++              <th scope="col" className="pr-3 font-semibold">
++                {teamAbbr(game.away_team_id)}
++              </th>
++              <th scope="col" className="px-3 text-center font-semibold" />
++              <th scope="col" className="pl-3 text-right font-semibold">
++                {teamAbbr(game.home_team_id)}
++              </th>
++            </tr>
++          </thead>
++          <tbody>
++            {positions.map((pos) => {
++              const { away, home } = byPosition.get(pos)!;
++              const label = baseLabel(
++                away?.display_label ?? home?.display_label ?? null,
++              );
++              return (
++                <tr key={pos} className="border-t">
++                  <td className="py-1 pr-3">{away ? statValue(away) : '–'}</td>
++                  <td className="px-3 py-1 text-center" style={{ color: 'var(--text-muted)' }}>
++                    {label}
++                  </td>
++                  <td className="py-1 pl-3 text-right">
++                    {home ? statValue(home) : '–'}
++                  </td>
++                </tr>
++              );
++            })}
++          </tbody>
++        </table>
++      </div>
++    </section>
++  );
++}
++
++/* ------------------------------------------------------------------ */
++/* Game leaders                                                        */
++/* ------------------------------------------------------------------ */
++
++function Leaders({ boxScore }: { boxScore: GameBoxScore }) {
++  const { game, leaders } = boxScore;
++  if (leaders.length === 0) return null;
++  const groups = new Map<string, GameLeader[]>();
++  for (const l of leaders) {
++    const key = `${l.team_id}::${l.category_key}`;
++    if (!groups.has(key)) groups.set(key, []);
++    groups.get(key)!.push(l);
++  }
++  const order = [game.away_team_id, game.home_team_id];
++  const sorted = [...groups.entries()].sort(([a], [b]) => {
++    const [ta] = a.split('::');
++    const [tb] = b.split('::');
++    return order.indexOf(ta) - order.indexOf(tb);
++  });
++  return (
++    <section aria-label="Game leaders" className="mt-8">
++      <h2 className="field-label">Game leaders</h2>
++      <div className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2">
++        {sorted.map(([key, group]) => {
++          const [team] = key.split('::');
++          const first = group[0];
++          return (
++            <div key={key} className="card p-4">
++              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
++                {teamAbbr(team)} ·{' '}
++                {first.category_label ?? prettifyKey(first.category_key)}
++              </p>
++              <ul className="mt-1">
++                {group.map((l, i) => (
++                  <li key={i} className="mt-1 text-sm">
++                    <span className="font-semibold">
++                      {l.player_name ?? 'Unknown player'}
++                    </span>{' '}
++                    — {l.display_value ?? (l.metric_value ?? '–')}
++                  </li>
++                ))}
++              </ul>
++            </div>
++          );
++        })}
++      </div>
++    </section>
++  );
++}
++
++/* ------------------------------------------------------------------ */
++/* Player stats                                                        */
++/* ------------------------------------------------------------------ */
++
++interface PlayerLine {
++  name: string;
++  /** Merged "label: value" chips; compound pairs share one verbatim value. */
++  chips: string[];
++}
++
++function playerLines(stats: PlayerGameStat[]): PlayerLine[] {
++  const byPlayer = new Map<string, PlayerGameStat[]>();
++  for (const s of stats) {
++    const key = s.player_name ?? s.metric_key;
++    if (!byPlayer.has(key)) byPlayer.set(key, []);
++    byPlayer.get(key)!.push(s);
++  }
++  return [...byPlayer.entries()].map(([name, rows]) => {
++    // Merge compound splits: rows sharing the verbatim display value are one chip.
++    const byValue = new Map<string, string[]>();
++    const order: string[] = [];
++    for (const r of rows) {
++      const value = statValue(r);
++      if (!byValue.has(value)) {
++        byValue.set(value, []);
++        order.push(value);
++      }
++      byValue.get(value)!.push(prettifyKey(r.display_label ?? r.metric_key));
++    }
++    return {
++      name,
++      chips: order.map(
++        (value) => `${[...new Set(byValue.get(value)!)].join(' / ')} ${value}`,
++      ),
++    };
++  });
++}
++
++function PlayerStats({ boxScore }: { boxScore: GameBoxScore }) {
++  const { game, player_stats } = boxScore;
++  if (player_stats.length === 0) return null;
++  const groups = new Map<string, PlayerGameStat[]>();
++  for (const s of player_stats) {
++    const key = `${s.team_id ?? ''}::${s.category_key}`;
++    if (!groups.has(key)) groups.set(key, []);
++    groups.get(key)!.push(s);
++  }
++  const order = [game.away_team_id, game.home_team_id];
++  const sorted = [...groups.entries()].sort(([a], [b]) => {
++    const [ta, ca] = a.split('::');
++    const [tb, cb] = b.split('::');
++    const d = order.indexOf(ta) - order.indexOf(tb);
++    return d !== 0 ? d : ca.localeCompare(cb);
++  });
++  return (
++    <section aria-label="Player stats" className="mt-8">
++      <h2 className="field-label">Player stats</h2>
++      <p className="field-hint mt-1 max-w-3xl">
++        Complete available normalized game-stat breakdowns. Team attribution
++        for games ingested before the attribution column landed comes from the
++        recorded game leaders; unattributed players are grouped without a team.
++      </p>
++      <div className="mt-2 flex max-w-4xl flex-col gap-6">
++        {sorted.map(([key, stats]) => {
++          const [team, category] = key.split('::');
++          return (
++            <div key={key}>
++              <h3 className="font-bold">
++                {team ? `${teamAbbr(team)} — ` : ''}
++                {prettifyKey(category)}
++              </h3>
++              <ul className="mt-1 flex flex-col gap-1">
++                {playerLines(stats).map((line) => (
++                  <li key={line.name} className="text-sm">
++                    <span className="font-semibold">{line.name}</span>
++                    <span style={{ color: 'var(--text-muted)' }}>
++                      {' '}
++                      · {line.chips.join(' · ')}
++                    </span>
++                  </li>
++                ))}
++              </ul>
++            </div>
++          );
++        })}
++      </div>
++    </section>
++  );
++}
++
++/* ------------------------------------------------------------------ */
++/* Page                                                                */
++/* ------------------------------------------------------------------ */
++
++/**
++ * The canonical game page (Phase 2): one URL serves all three life phases.
++ * Scheduled games show the matchup and an honest preview placeholder (the
++ * preview pipeline is a later phase); in-progress games show the live score;
++ * final games show the report card with the full box-score drill-down.
++ */
++export default function GamePage() {
++  const params = useParams<{ id: string }>();
++  const gameId = params.id;
++  const [state, setState] = useState<GameState>({ kind: 'loading' });
++
++  useEffect(() => {
++    let cancelled = false;
++    (async () => {
++      try {
++        const boxScore = await getGameBoxScore(gameId);
++        if (!cancelled) setState({ kind: 'ready', boxScore });
++      } catch (err) {
++        if (!cancelled) {
++          if (err instanceof ApiError && err.status === 404) {
++            setState({ kind: 'not-found' });
++          } else {
++            setState({
++              kind: 'error',
++              message:
++                err instanceof ApiError ? err.message : 'Could not load the game.',
++            });
++          }
++        }
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [gameId]);
++
++  if (state.kind === 'loading') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <p role="status">Loading game…</p>
++      </div>
++    );
++  }
++
++  if (state.kind === 'error' || state.kind === 'not-found') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <p className="mb-4">
++          <Link href="/weeks" className="link">
++            ← All weeks
++          </Link>
++        </p>
++        <div className="max-w-md">
++          <EmptyState
++            title={state.kind === 'not-found' ? 'Game not found' : 'Could not load the game'}
++            body={
++              state.kind === 'not-found'
++                ? 'No ingested game matches this address.'
++                : state.message
++            }
++          />
++        </div>
++      </div>
++    );
++  }
++
++  const { boxScore } = state;
++  const { game } = boxScore;
++  const hasScore = game.status !== 'scheduled';
++
++  return (
++    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++      <p className="mb-4">
++        <Link href={`/weeks/${game.week_number}`} className="link">
++          ← Week {game.week_number}
++        </Link>
++      </p>
++
++      <header>
++        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
++          {game.season} season · Week {game.week_number}
++        </p>
++        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
++          {teamName(game.away_team_id)} at {teamName(game.home_team_id)}
++        </h1>
++        <p className="mt-2 text-lg">
++          {hasScore ? (
++            <span className="font-bold">
++              {teamAbbr(game.away_team_id)} {game.away_score ?? '–'} —{' '}
++              {teamAbbr(game.home_team_id)} {game.home_score ?? '–'}
++            </span>
++          ) : (
++            <span style={{ color: 'var(--text-muted)' }}>
++              {formatKickoff(game.kickoff_at)}
++            </span>
++          )}
++          <span
++            className="ml-3 text-sm"
++            style={{ color: 'var(--text-muted)' }}
++          >
++            {game.status === 'final'
++              ? 'Final'
++              : game.status === 'in_progress'
++                ? 'In progress'
++                : `Scheduled · ${formatKickoff(game.kickoff_at)}`}
++          </span>
++        </p>
++      </header>
++
++      {game.status === 'scheduled' ? (
++        <div className="mt-8 max-w-md">
++          <EmptyState
++            title="Preview not yet published"
++            body="Probabilities, matchup stats, and the qualitative scorecard arrive with the preview pipeline. This page becomes the full report card once the game is final."
++          />
++        </div>
++      ) : null}
++
++      {game.status === 'in_progress' ? (
++        <p className="field-hint mt-8 max-w-2xl">
++          Game in progress — the score and box score refresh as the ingest
++          pipeline delivers updates.
++        </p>
++      ) : null}
++
++      {game.status === 'final' ? (
++        <>
++          <Linescore boxScore={boxScore} />
++          <TeamStats boxScore={boxScore} />
++          <Leaders boxScore={boxScore} />
++          <PlayerStats boxScore={boxScore} />
++          {boxScore.periods.length === 0 &&
++          boxScore.team_stats.length === 0 &&
++          boxScore.player_stats.length === 0 &&
++          boxScore.leaders.length === 0 ? (
++            <div className="mt-8 max-w-md">
++              <EmptyState
++                title="Box score not yet ingested"
++                body="The final score is in, but the detailed box-score breakdown has not arrived from the ingest pipeline yet."
++              />
++            </div>
++          ) : null}
++        </>
++      ) : null}
++    </div>
++  );
++}
+diff --git a/apps/web/src/app/weeks/[id]/page.tsx b/apps/web/src/app/weeks/[id]/page.tsx
+new file mode 100644
+index 0000000..ab064d8
+--- /dev/null
++++ b/apps/web/src/app/weeks/[id]/page.tsx
+@@ -0,0 +1,198 @@
++'use client';
++
++import Link from 'next/link';
++import { useParams } from 'next/navigation';
++import { useEffect, useState } from 'react';
++import { EmptyState } from '@/components/EmptyState';
++import { ApiError, getWeekGames, getWeeks } from '@/lib/api';
++import type { Game, Week } from '@/lib/types';
++import { getTeamTheme } from '@/lib/theme/teams';
++
++type DetailState =
++  | { kind: 'loading' }
++  | { kind: 'error'; message: string }
++  | { kind: 'not-found' }
++  | { kind: 'ready'; week: Week; games: Game[] };
++
++function teamName(teamId: string): string {
++  return getTeamTheme(teamId)?.name ?? teamId.toUpperCase();
++}
++
++function teamAbbr(teamId: string): string {
++  return getTeamTheme(teamId)?.abbr ?? teamId.toUpperCase();
++}
++
++function formatKickoff(iso: string): string {
++  const d = new Date(iso);
++  if (Number.isNaN(d.getTime())) return iso;
++  return d.toLocaleString(undefined, {
++    weekday: 'short',
++    month: 'short',
++    day: 'numeric',
++    hour: 'numeric',
++    minute: '2-digit',
++  });
++}
++
++function statusLabel(status: string): string {
++  switch (status) {
++    case 'current':
++      return 'Current week';
++    case 'final':
++      return 'Final';
++    case 'upcoming':
++      return 'Upcoming';
++    default:
++      return status;
++  }
++}
++
++function gameStatusLabel(status: string): string {
++  switch (status) {
++    case 'scheduled':
++      return 'Scheduled';
++    case 'in_progress':
++      return 'In progress';
++    case 'final':
++      return 'Final';
++    default:
++      return status;
++  }
++}
++
++function scoreLine(game: Game): string {
++  if (game.status === 'final' || game.status === 'in_progress') {
++    return `${teamAbbr(game.away_team_id)} ${game.away_score ?? '–'} · ${teamAbbr(game.home_team_id)} ${game.home_score ?? '–'}`;
++  }
++  return `${teamName(game.away_team_id)} at ${teamName(game.home_team_id)}`;
++}
++
++/**
++ * Week detail (Phase 2): the week's stable page. Full slate with kickoff
++ * times and scores; every game card drills down to its canonical game page
++ * at /games/[id], which serves all three life phases (scheduled preview,
++ * in-progress, final report card).
++ */
++export default function WeekDetailPage() {
++  const params = useParams<{ id: string }>();
++  const ref = params.id;
++  const [state, setState] = useState<DetailState>({ kind: 'loading' });
++
++  useEffect(() => {
++    let cancelled = false;
++    (async () => {
++      try {
++        const [weeks, games] = await Promise.all([
++          getWeeks(),
++          getWeekGames(ref),
++        ]);
++        const week =
++          weeks.find((w) => w.id === ref) ??
++          weeks.find((w) => String(w.week_number) === ref);
++        if (!cancelled) {
++          if (!week) setState({ kind: 'not-found' });
++          else setState({ kind: 'ready', week, games });
++        }
++      } catch (err) {
++        if (!cancelled) {
++          if (err instanceof ApiError && err.status === 404) {
++            setState({ kind: 'not-found' });
++          } else {
++            setState({
++              kind: 'error',
++              message:
++                err instanceof ApiError ? err.message : 'Could not load the week.',
++            });
++          }
++        }
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [ref]);
++
++  if (state.kind === 'loading') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <p role="status">Loading week…</p>
++      </div>
++    );
++  }
++
++  if (state.kind === 'error' || state.kind === 'not-found') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <p className="mb-4">
++          <Link href="/weeks" className="link">
++            ← All weeks
++          </Link>
++        </p>
++        <div className="max-w-md">
++          <EmptyState
++            title={state.kind === 'not-found' ? 'Week not found' : 'Could not load the week'}
++            body={
++              state.kind === 'not-found'
++                ? `No ingested week matches "${ref}".`
++                : state.message
++            }
++          />
++        </div>
++      </div>
++    );
++  }
++
++  const { week, games } = state;
++
++  return (
++    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++      <p className="mb-4">
++        <Link href="/weeks" className="link">
++          ← All weeks
++        </Link>
++      </p>
++      <h1 className="text-3xl font-extrabold tracking-tight">{week.label}</h1>
++      <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
++        {week.season} season · {statusLabel(week.status)} · {games.length}{' '}
++        {games.length === 1 ? 'game' : 'games'}
++      </p>
++
++      {games.length === 0 ? (
++        <div className="mt-8 max-w-md">
++          <EmptyState
++            title="No games scheduled"
++            body="This week has no games in the ingested schedule yet."
++          />
++        </div>
++      ) : (
++        <ol className="mt-8 grid max-w-4xl gap-3 md:grid-cols-2">
++          {games.map((game) => (
++            <li key={game.id}>
++              <Link
++                href={`/games/${game.id}`}
++                className="card block p-4 no-underline"
++                aria-label={`${scoreLine(game)}, ${gameStatusLabel(game.status)}`}
++              >
++                <span className="flex items-baseline justify-between gap-2">
++                  <span className="font-bold">{scoreLine(game)}</span>
++                  <span
++                    className="shrink-0 text-sm"
++                    style={{ color: 'var(--text-muted)' }}
++                  >
++                    {gameStatusLabel(game.status)}
++                  </span>
++                </span>
++                <span
++                  className="mt-1 block text-sm"
++                  style={{ color: 'var(--text-muted)' }}
++                >
++                  {formatKickoff(game.kickoff_at)} — tap for box score
++                </span>
++              </Link>
++            </li>
++          ))}
++        </ol>
++      )}
++    </div>
++  );
++}
+diff --git a/apps/web/src/app/weeks/page.tsx b/apps/web/src/app/weeks/page.tsx
+index 16a03ec..b5ff612 100644
+--- a/apps/web/src/app/weeks/page.tsx
++++ b/apps/web/src/app/weeks/page.tsx
+@@ -1,13 +1,100 @@
+-import type { Metadata } from 'next';
++'use client';
++
++import Link from 'next/link';
++import { useEffect, useState } from 'react';
+ import { EmptyState } from '@/components/EmptyState';
++import { ApiError, getCurrentWeek, getWeeks } from '@/lib/api';
++import type { Week } from '@/lib/types';
++
++type WeeksState =
++  | { kind: 'loading' }
++  | { kind: 'error'; message: string }
++  | { kind: 'ready'; weeks: Week[]; current: Week | null };
+ 
+-export const metadata: Metadata = { title: 'Weekly Games' };
++function statusLabel(status: string): string {
++  switch (status) {
++    case 'current':
++      return 'Current week';
++    case 'final':
++      return 'Final';
++    case 'upcoming':
++      return 'Upcoming';
++    default:
++      return status;
++  }
++}
+ 
+ /**
+- * Weekly Games shell (Phase 1). The week selector and game slates arrive
+- * with Phase 2 ingestion; until then the page is an honest empty state.
++ * Weekly Games index (Phase 2): every ingested week of the season, wired to
++ * the sports-data read path. The current week is featured; each week card
++ * links to its stable page at /weeks/[week-number].
+  */
+ export default function WeeksPage() {
++  const [state, setState] = useState<WeeksState>({ kind: 'loading' });
++
++  useEffect(() => {
++    let cancelled = false;
++    (async () => {
++      try {
++        const [weeks, current] = await Promise.all([getWeeks(), getCurrentWeek()]);
++        if (!cancelled) setState({ kind: 'ready', weeks, current });
++      } catch (err) {
++        if (!cancelled) {
++          setState({
++            kind: 'error',
++            message:
++              err instanceof ApiError ? err.message : 'Could not load weeks.',
++          });
++        }
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, []);
++
++  if (state.kind === 'loading') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <h1 className="text-3xl font-extrabold tracking-tight">Weekly Games</h1>
++        <p role="status" className="mt-4">
++          Loading weeks…
++        </p>
++      </div>
++    );
++  }
++
++  if (state.kind === 'error') {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <h1 className="text-3xl font-extrabold tracking-tight">Weekly Games</h1>
++        <div className="mt-8 max-w-md">
++          <EmptyState title="Could not load weeks" body={state.message} />
++        </div>
++      </div>
++    );
++  }
++
++  const { weeks, current } = state;
++
++  if (weeks.length === 0) {
++    return (
++      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
++        <h1 className="text-3xl font-extrabold tracking-tight">Weekly Games</h1>
++        <p className="mt-2 max-w-2xl" style={{ color: 'var(--text-muted)' }}>
++          Every season week gets a stable page with the full slate, scores, and
++          box-score drill-downs.
++        </p>
++        <div className="mt-8 max-w-md">
++          <EmptyState
++            title="No weeks scheduled yet"
++            body="Once game data is ingested, this page lists the active week's complete slate. Past weeks remain available at their permanent addresses."
++          />
++        </div>
++      </div>
++    );
++  }
++
+   return (
+     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+       <h1 className="text-3xl font-extrabold tracking-tight">Weekly Games</h1>
+@@ -16,24 +103,49 @@ export default function WeeksPage() {
+         box-score drill-downs.
+       </p>
+ 
+-      <div className="mt-6 max-w-md">
+-        <label htmlFor="week-select" className="field-label">
+-          Season week
+-        </label>
+-        <select id="week-select" className="select-input" disabled aria-describedby="week-select-hint">
+-          <option value="">No weeks available yet</option>
+-        </select>
+-        <p id="week-select-hint" className="field-hint">
+-          The schedule arrives with game-data ingestion in a later phase.
+-        </p>
+-      </div>
++      {current ? (
++        <section aria-label="Current week" className="mt-8">
++          <h2 className="field-label">Current week</h2>
++          <Link
++            href={`/weeks/${current.week_number}`}
++            className="card mt-2 block max-w-md p-5 no-underline"
++          >
++            <span className="text-xl font-bold">{current.label}</span>
++            <span
++              className="mt-1 block text-sm"
++              style={{ color: 'var(--text-muted)' }}
++            >
++              {statusLabel(current.status)} · {current.season} season — tap for
++              the full slate and scores
++            </span>
++          </Link>
++        </section>
++      ) : null}
+ 
+-      <div className="mt-8">
+-        <EmptyState
+-          title="No weeks scheduled yet"
+-          body="Once game data is ingested, this page lists the active week's complete slate. Past weeks remain available at their permanent addresses."
+-        />
+-      </div>
++      <section aria-label="All weeks" className="mt-10">
++        <h2 className="field-label">All weeks</h2>
++        <ol className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2">
++          {weeks.map((week) => (
++            <li key={week.id}>
++              <Link
++                href={`/weeks/${week.week_number}`}
++                className="card block p-4 no-underline"
++                aria-label={`${week.label}, ${statusLabel(week.status)}`}
++              >
++                <span className="flex items-baseline justify-between gap-2">
++                  <span className="text-lg font-bold">{week.label}</span>
++                  <span
++                    className="text-sm"
++                    style={{ color: 'var(--text-muted)' }}
++                  >
++                    {statusLabel(week.status)}
++                  </span>
++                </span>
++              </Link>
++            </li>
++          ))}
++        </ol>
++      </section>
+     </div>
+   );
+ }
+diff --git a/apps/web/src/lib/games.ts b/apps/web/src/lib/games.ts
+index c34b9a3..197d877 100644
+--- a/apps/web/src/lib/games.ts
++++ b/apps/web/src/lib/games.ts
+@@ -192,3 +192,156 @@ export async function getWeeks(): Promise<v1.Week[]> {
+   return rows.map(toWeek);
+ }
+ 
++/** One game by UUID. Returns null when nothing matches. */
++export async function getGameById(gameId: string): Promise<v1.Game | null> {
++  const row = await queryOne<GameRow>(`${GAME_SELECT} WHERE g.id = $1`, [
++    gameId,
++  ]);
++  return row ? toGame(row) : null;
++}
++
++interface TeamStatRow {
++  team: string;
++  metric_key: string;
++  display_label: string | null;
++  display_value: string | null;
++  metric_value: string | null; // pg numeric arrives as string
++  unit: string | null;
++  category: string | null;
++  position: number;
++}
++
++interface PlayerStatRow {
++  team: string | null;
++  player_name: string | null;
++  category_key: string;
++  metric_key: string;
++  display_label: string | null;
++  display_value: string | null; // provider verbatim raw_value
++  metric_value: string | null;
++  unit: string | null;
++}
++
++interface LeaderRow {
++  team: string;
++  category_key: string;
++  category_label: string | null;
++  rank: number;
++  player_name: string | null;
++  display_value: string | null;
++  metric_value: string | null;
++}
++
++interface PeriodRow {
++  team: string;
++  period_number: number;
++  points: number;
++}
++
++function toNumber(value: string | null): number | null {
++  if (value === null) return null;
++  const n = Number(value);
++  return Number.isFinite(n) ? n : null;
++}
++
++/**
++ * The canonical game-page payload: game, scoring periods, team stats,
++ * player stats, and game leaders. Sections the pipeline has not delivered
++ * yet come back empty; the page renders those as honest empty states.
++ */
++export async function getGameBoxScore(
++  gameId: string,
++): Promise<v1.GameBoxScoreResponse | null> {
++  const game = await getGameById(gameId);
++  if (!game) return null;
++
++  const [periods, teamStats, playerStats, leaders] = await Promise.all([
++    query<PeriodRow>(
++      `SELECT t.abbreviation AS team, sp.period_number, sp.points
++       FROM scoring_periods sp
++       JOIN teams t ON t.id = sp.team_id
++       WHERE sp.game_id = $1
++       ORDER BY t.abbreviation, sp.period_number`,
++      [gameId],
++    ),
++    query<TeamStatRow>(
++      `SELECT t.abbreviation AS team, s.metric_key, s.display_label,
++              s.display_value, s.metric_value::text AS metric_value,
++              s.unit, s.category, s.position
++       FROM team_game_stats s
++       JOIN teams t ON t.id = s.team_id
++       WHERE s.game_id = $1
++       ORDER BY t.abbreviation, s.position, s.metric_key`,
++      [gameId],
++    ),
++    query<PlayerStatRow>(
++      `SELECT COALESCE(t.abbreviation, lt.abbreviation) AS team,
++              s.player_name, s.category_key,
++              s.metric_key, s.display_label,
++              s.raw_value AS display_value, s.metric_value::text AS metric_value,
++              s.unit
++       FROM player_game_stats s
++       LEFT JOIN teams t ON t.id = s.team_id
++       LEFT JOIN LATERAL (
++         SELECT t2.abbreviation
++         FROM game_leaders l
++         JOIN teams t2 ON t2.id = l.team_id
++         WHERE l.game_id = s.game_id
++           AND l.player_external_id = s.player_external_id
++         LIMIT 1
++       ) lt ON true
++       WHERE s.game_id = $1
++       ORDER BY team NULLS LAST, s.category_key, s.player_name, s.metric_key`,
++      [gameId],
++    ),
++    query<LeaderRow>(
++      `SELECT t.abbreviation AS team, l.category_key, l.category_label,
++              l.rank, l.player_name, l.display_value,
++              l.metric_value::text AS metric_value
++       FROM game_leaders l
++       JOIN teams t ON t.id = l.team_id
++       WHERE l.game_id = $1
++       ORDER BY t.abbreviation, l.category_key, l.rank`,
++      [gameId],
++    ),
++  ]);
++
++  return {
++    game,
++    periods: periods.rows.map((r) => ({
++      team_id: r.team as v1.NflTeam,
++      period_number: r.period_number,
++      points: r.points,
++    })),
++    team_stats: teamStats.rows.map((r) => ({
++      team_id: r.team as v1.NflTeam,
++      metric_key: r.metric_key,
++      display_label: r.display_label,
++      display_value: r.display_value,
++      metric_value: toNumber(r.metric_value),
++      unit: r.unit,
++      category: r.category,
++      position: r.position,
++    })),
++    player_stats: playerStats.rows.map((r) => ({
++      team_id: r.team as v1.NflTeam | null,
++      player_name: r.player_name,
++      category_key: r.category_key,
++      category_label: null,
++      metric_key: r.metric_key,
++      display_label: r.display_label,
++      display_value: r.display_value,
++      metric_value: toNumber(r.metric_value),
++      unit: r.unit,
++    })),
++    leaders: leaders.rows.map((r) => ({
++      team_id: r.team as v1.NflTeam,
++      category_key: r.category_key,
++      category_label: r.category_label,
++      rank: r.rank,
++      player_name: r.player_name,
++      display_value: r.display_value,
++      metric_value: toNumber(r.metric_value),
++    })),
++  };
++}
+diff --git a/db/ingest/store.mjs b/db/ingest/store.mjs
+index bee4428..0241c7c 100644
+--- a/db/ingest/store.mjs
++++ b/db/ingest/store.mjs
+@@ -258,24 +258,25 @@ export async function upsertTeamStats(client, gameIdByRef, teamIdByAbbr, rows, s
+ }
+ 
+ export async function upsertPlayerStats(client, gameIdByRef, teamIdByAbbr, rows, sourcePayloadId) {
+-  void teamIdByAbbr;
+   for (const r of rows) {
+     const gameId = gameIdByRef.get(r.game_ref);
+     if (!gameId) continue;
++    const teamId = teamIdByAbbr.get(r.team_abbr) || null;
+     await client.query(
+       `INSERT INTO player_game_stats
+-         (game_id, player_external_id, player_name, category_key, metric_key,
++         (game_id, team_id, player_external_id, player_name, category_key, metric_key,
+           display_label, metric_value, unit, raw_value, source_payload_id)
+-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
++       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (game_id, player_external_id, category_key, metric_key)
+        DO UPDATE SET
++         team_id = EXCLUDED.team_id,
+          player_name = EXCLUDED.player_name,
+          display_label = EXCLUDED.display_label,
+          metric_value = EXCLUDED.metric_value,
+          unit = EXCLUDED.unit,
+          raw_value = EXCLUDED.raw_value,
+          source_payload_id = EXCLUDED.source_payload_id`,
+-      [gameId, r.player_external_id, r.player_name, r.category_key, r.metric_key,
++      [gameId, teamId, r.player_external_id, r.player_name, r.category_key, r.metric_key,
+        r.metric_key, r.metric_value, null, r.raw_value, sourcePayloadId || null]
+     );
+   }
+diff --git a/db/migrations/010_player_stat_teams.sql b/db/migrations/010_player_stat_teams.sql
+new file mode 100644
+index 0000000..ca6e7cd
+--- /dev/null
++++ b/db/migrations/010_player_stat_teams.sql
+@@ -0,0 +1,16 @@
++-- 010_player_stat_teams.sql
++-- Phase 2 follow-up: attribute player_game_stats rows to their team.
++--
++-- The ESPN normalizer always knew each athlete's team (team_abbr on the
++-- normalized row) but store.mjs dropped it at insert. Going forward the
++-- column is populated at insert time; rows ingested before this migration
++-- keep team_id NULL and the read path falls back to the game_leaders
++-- attribution for those games.
++--
++-- Additive only: nullable column, no backfill in the migration itself.
++
++ALTER TABLE player_game_stats
++    ADD COLUMN team_id uuid REFERENCES teams (id) ON DELETE SET NULL;
++
++CREATE INDEX player_game_stats_team_idx
++    ON player_game_stats (game_id, team_id);

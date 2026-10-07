@@ -192,3 +192,156 @@ export async function getWeeks(): Promise<v1.Week[]> {
   return rows.map(toWeek);
 }
 
+/** One game by UUID. Returns null when nothing matches. */
+export async function getGameById(gameId: string): Promise<v1.Game | null> {
+  const row = await queryOne<GameRow>(`${GAME_SELECT} WHERE g.id = $1`, [
+    gameId,
+  ]);
+  return row ? toGame(row) : null;
+}
+
+interface TeamStatRow {
+  team: string;
+  metric_key: string;
+  display_label: string | null;
+  display_value: string | null;
+  metric_value: string | null; // pg numeric arrives as string
+  unit: string | null;
+  category: string | null;
+  position: number;
+}
+
+interface PlayerStatRow {
+  team: string | null;
+  player_name: string | null;
+  category_key: string;
+  metric_key: string;
+  display_label: string | null;
+  display_value: string | null; // provider verbatim raw_value
+  metric_value: string | null;
+  unit: string | null;
+}
+
+interface LeaderRow {
+  team: string;
+  category_key: string;
+  category_label: string | null;
+  rank: number;
+  player_name: string | null;
+  display_value: string | null;
+  metric_value: string | null;
+}
+
+interface PeriodRow {
+  team: string;
+  period_number: number;
+  points: number;
+}
+
+function toNumber(value: string | null): number | null {
+  if (value === null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * The canonical game-page payload: game, scoring periods, team stats,
+ * player stats, and game leaders. Sections the pipeline has not delivered
+ * yet come back empty; the page renders those as honest empty states.
+ */
+export async function getGameBoxScore(
+  gameId: string,
+): Promise<v1.GameBoxScoreResponse | null> {
+  const game = await getGameById(gameId);
+  if (!game) return null;
+
+  const [periods, teamStats, playerStats, leaders] = await Promise.all([
+    query<PeriodRow>(
+      `SELECT t.abbreviation AS team, sp.period_number, sp.points
+       FROM scoring_periods sp
+       JOIN teams t ON t.id = sp.team_id
+       WHERE sp.game_id = $1
+       ORDER BY t.abbreviation, sp.period_number`,
+      [gameId],
+    ),
+    query<TeamStatRow>(
+      `SELECT t.abbreviation AS team, s.metric_key, s.display_label,
+              s.display_value, s.metric_value::text AS metric_value,
+              s.unit, s.category, s.position
+       FROM team_game_stats s
+       JOIN teams t ON t.id = s.team_id
+       WHERE s.game_id = $1
+       ORDER BY t.abbreviation, s.position, s.metric_key`,
+      [gameId],
+    ),
+    query<PlayerStatRow>(
+      `SELECT COALESCE(t.abbreviation, lt.abbreviation) AS team,
+              s.player_name, s.category_key,
+              s.metric_key, s.display_label,
+              s.raw_value AS display_value, s.metric_value::text AS metric_value,
+              s.unit
+       FROM player_game_stats s
+       LEFT JOIN teams t ON t.id = s.team_id
+       LEFT JOIN LATERAL (
+         SELECT t2.abbreviation
+         FROM game_leaders l
+         JOIN teams t2 ON t2.id = l.team_id
+         WHERE l.game_id = s.game_id
+           AND l.player_external_id = s.player_external_id
+         LIMIT 1
+       ) lt ON true
+       WHERE s.game_id = $1
+       ORDER BY team NULLS LAST, s.category_key, s.player_name, s.metric_key`,
+      [gameId],
+    ),
+    query<LeaderRow>(
+      `SELECT t.abbreviation AS team, l.category_key, l.category_label,
+              l.rank, l.player_name, l.display_value,
+              l.metric_value::text AS metric_value
+       FROM game_leaders l
+       JOIN teams t ON t.id = l.team_id
+       WHERE l.game_id = $1
+       ORDER BY t.abbreviation, l.category_key, l.rank`,
+      [gameId],
+    ),
+  ]);
+
+  return {
+    game,
+    periods: periods.rows.map((r) => ({
+      team_id: r.team as v1.NflTeam,
+      period_number: r.period_number,
+      points: r.points,
+    })),
+    team_stats: teamStats.rows.map((r) => ({
+      team_id: r.team as v1.NflTeam,
+      metric_key: r.metric_key,
+      display_label: r.display_label,
+      display_value: r.display_value,
+      metric_value: toNumber(r.metric_value),
+      unit: r.unit,
+      category: r.category,
+      position: r.position,
+    })),
+    player_stats: playerStats.rows.map((r) => ({
+      team_id: r.team as v1.NflTeam | null,
+      player_name: r.player_name,
+      category_key: r.category_key,
+      category_label: null,
+      metric_key: r.metric_key,
+      display_label: r.display_label,
+      display_value: r.display_value,
+      metric_value: toNumber(r.metric_value),
+      unit: r.unit,
+    })),
+    leaders: leaders.rows.map((r) => ({
+      team_id: r.team as v1.NflTeam,
+      category_key: r.category_key,
+      category_label: r.category_label,
+      rank: r.rank,
+      player_name: r.player_name,
+      display_value: r.display_value,
+      metric_value: toNumber(r.metric_value),
+    })),
+  };
+}
