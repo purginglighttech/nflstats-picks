@@ -341,3 +341,53 @@ export const CompareQuerySchema = z.object({
   with_user_id: EntityIdSchema,
 });
 export type CompareQuery = z.infer<typeof CompareQuerySchema>;
+
+/* ------------------------------------------------------------------ */
+/* Head-to-head game ledger (GET /api/v1/compare/games)                */
+/*                                                                     */
+/* Two participants, one week (or season): every graded game side by   */
+/* side — agreed picks, disagreed picks, and who won the disagreements.*/
+/* ------------------------------------------------------------------ */
+
+export const HeadToHeadGameSchema = z.object({
+  game_id: EntityIdSchema,
+  week_id: EntityIdSchema,
+  week_number: z.number().int().min(1),
+  away_team: z.string(),
+  home_team: z.string(),
+  away_score: z.number().int().min(0).nullable(),
+  home_score: z.number().int().min(0).nullable(),
+  status: z.string(),
+  user_a_pick: z.string().nullable(),
+  user_b_pick: z.string().nullable(),
+  user_a_grade: z.enum(["win", "loss", "tie", "pending", "void"]).nullable(),
+  user_b_grade: z.enum(["win", "loss", "tie", "pending", "void"]).nullable(),
+  /** True when both picked the same team (or both have no pick). */
+  agreed: z.boolean(),
+});
+export type HeadToHeadGame = z.infer<typeof HeadToHeadGameSchema>;
+
+export const HeadToHeadResponseSchema = z.object({
+  user_a: z.object({
+    user_id: EntityIdSchema,
+    display_name: DisplayNameSchema,
+  }),
+  user_b: z.object({
+    user_id: EntityIdSchema,
+    display_name: DisplayNameSchema,
+  }),
+  /** Week scope, or null for season scope. */
+  week_id: EntityIdSchema.nullable(),
+  season: z.number().int().min(2000).max(2100),
+  games: z.array(HeadToHeadGameSchema),
+  summary: z.object({
+    games: z.number().int().min(0),
+    agreed: z.number().int().min(0),
+    disagreed: z.number().int().min(0),
+    /** Games where they differed and A picked the winner. */
+    user_a_disagreement_wins: z.number().int().min(0),
+    /** Games where they differed and B picked the winner. */
+    user_b_disagreement_wins: z.number().int().min(0),
+  }),
+});
+export type HeadToHeadResponse = z.infer<typeof HeadToHeadResponseSchema>;

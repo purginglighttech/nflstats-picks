@@ -563,3 +563,87 @@ export async function getSeasonByRef(ref: string): Promise<{ id: string; year: n
     [ref],
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Head-to-head comparison                                             */
+/* ------------------------------------------------------------------ */
+
+export interface HeadToHeadGameRow {
+  game_id: string;
+  week_id: string;
+  week_number: number;
+  away_team: string;
+  home_team: string;
+  away_score: number | null;
+  home_score: number | null;
+  status: string;
+  user_a_pick: string | null;
+  user_b_pick: string | null;
+  user_a_grade: string | null;
+  user_b_grade: string | null;
+  agreed: boolean;
+}
+
+/**
+ * Side-by-side picks for two participants across graded games.
+ * Only final games are returned — picks stay sealed pre-lock.
+ * Scope: one week (weekId) or a whole season (seasonYear).
+ */
+export async function getHeadToHeadGames(
+  userAId: string,
+  userBId: string,
+  scope: { weekId: string } | { seasonYear: number }
+): Promise<HeadToHeadGameRow[]> {
+  const weekFilter =
+    "weekId" in scope
+      ? `AND w.id = $3`
+      : `AND s.year = $3`;
+  const params =
+    "weekId" in scope
+      ? [userAId, userBId, scope.weekId]
+      : [userAId, userBId, scope.seasonYear];
+
+  const { rows } = await query<HeadToHeadGameRow>(
+    `SELECT g.id AS game_id, w.id AS week_id, w.number AS week_number,
+            ta.abbreviation AS away_team, th.abbreviation AS home_team,
+            r.away_score, r.home_score, g.status,
+            pa_pick.abbreviation AS user_a_pick,
+            pb_pick.abbreviation AS user_b_pick,
+            pa.grade AS user_a_grade,
+            pb.grade AS user_b_grade,
+            (pa.selected_team_id IS NOT DISTINCT FROM pb.selected_team_id) AS agreed
+     FROM games g
+     JOIN weeks w ON w.id = g.week_id
+     JOIN seasons s ON s.id = w.season_id
+     JOIN teams ta ON ta.id = g.away_team_id
+     JOIN teams th ON th.id = g.home_team_id
+     LEFT JOIN game_result_revisions r ON r.id = g.result_revision_id
+     LEFT JOIN picks pa ON pa.game_id = g.id
+       AND pa.user_id = $1 AND pa.committed_at IS NOT NULL
+     LEFT JOIN teams pa_pick ON pa_pick.id = pa.selected_team_id
+     LEFT JOIN picks pb ON pb.game_id = g.id
+       AND pb.user_id = $2 AND pb.committed_at IS NOT NULL
+     LEFT JOIN teams pb_pick ON pb_pick.id = pb.selected_team_id
+     WHERE s.league = 'NFL'
+       ${weekFilter}
+       AND g.status = 'final'
+     ORDER BY w.number, g.scheduled_at`,
+    params
+  );
+  return rows;
+}
+
+/** Display names for two users (for the compare header). */
+export async function getCompareUsers(
+  userAId: string,
+  userBId: string
+): Promise<{ user_id: string; display_name: string }[]> {
+  const { rows } = await query<{ user_id: string; display_name: string }>(
+    `SELECT u.id AS user_id, pr.display_name
+     FROM users u
+     JOIN profiles pr ON pr.user_id = u.id
+     WHERE u.id = ANY($1)`,
+    [[userAId, userBId]]
+  );
+  return rows;
+}

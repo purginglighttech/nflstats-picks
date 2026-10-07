@@ -87,15 +87,94 @@ export class DevOutboxEmailSender implements EmailSender {
   }
 }
 
+/**
+ * Resend-backed sender (production).
+ *
+ * Env:
+ *   EMAIL_PROVIDER=resend
+ *   RESEND_API_KEY=re_...          (Fly secret, never committed)
+ *   EMAIL_FROM=noreply@purginglight.org
+ *
+ * Uses the Resend HTTP API directly (no SDK dependency).
+ */
+export class ResendEmailSender implements EmailSender {
+  private readonly apiKey: string;
+  private readonly from: string;
+
+  constructor(apiKey: string, from: string) {
+    this.apiKey = apiKey;
+    this.from = from;
+  }
+
+  private async send(to: string, subject: string, text: string): Promise<void> {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: this.from, to, subject, text }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`resend: send failed (${res.status}): ${body.slice(0, 200)}`);
+    }
+  }
+
+  async sendVerificationEmail({ to, verifyUrl }: VerificationEmail): Promise<void> {
+    await this.send(
+      to,
+      "Verify your NFL Pick'em account",
+      [
+        "Welcome to the pick'em pool.",
+        "",
+        "Verify your email to finish signing up:",
+        verifyUrl,
+        "",
+        "If you didn't create this account, you can ignore this email.",
+      ].join("\n")
+    );
+  }
+
+  async sendPasswordResetEmail({ to, resetUrl }: PasswordResetEmail): Promise<void> {
+    await this.send(
+      to,
+      "Reset your NFL Pick'em password",
+      [
+        "Someone requested a password reset for your account.",
+        "",
+        "Reset it here:",
+        resetUrl,
+        "",
+        "If that wasn't you, you can ignore this email — nothing changes.",
+      ].join("\n")
+    );
+  }
+}
+
 let sender: EmailSender | undefined;
 
 /**
- * Resolve the configured sender. Phase 1 always returns the dev outbox;
- * replace the selection logic here (env-driven) when the SMTP provider
- * lands — no route changes needed.
+ * Resolve the configured sender.
+ *
+ * EMAIL_PROVIDER=resend (plus RESEND_API_KEY and EMAIL_FROM) selects the
+ * Resend sender; anything else falls back to the dev outbox. Route handlers
+ * depend only on the EmailSender interface — no route changes needed.
  */
 export function getEmailSender(): EmailSender {
-  sender ??= new DevOutboxEmailSender();
+  if (sender) return sender;
+  if (process.env.EMAIL_PROVIDER === "resend") {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.EMAIL_FROM;
+    if (!apiKey || !from) {
+      throw new Error(
+        "email: EMAIL_PROVIDER=resend requires RESEND_API_KEY and EMAIL_FROM"
+      );
+    }
+    sender = new ResendEmailSender(apiKey, from);
+  } else {
+    sender = new DevOutboxEmailSender();
+  }
   return sender;
 }
 

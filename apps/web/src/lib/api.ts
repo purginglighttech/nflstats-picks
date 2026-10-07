@@ -8,6 +8,7 @@
 import type {
   Game,
   GameBoxScore,
+  HeadToHeadResponse,
   Me,
   MemberSettings,
   OwnPickResponse,
@@ -279,4 +280,21 @@ export async function getSeasonStandings(
   return get<SeasonStandingsResponse>(
     `/seasons/${encodeURIComponent(seasonRef)}/standings`,
   );
+}
+
+/**
+ * Head-to-head ledger. Contracts: GET /api/v1/compare ->
+ * HeadToHeadResponse. `scope` is { week_id } or { season }.
+ */
+export async function getHeadToHead(
+  userA: string,
+  userB: string,
+  scope: { week_id: string } | { season: number },
+): Promise<HeadToHeadResponse> {
+  const params = new URLSearchParams({
+    user_a: userA,
+    user_b: userB,
+    ...('week_id' in scope ? { week_id: scope.week_id } : { season: String(scope.season) }),
+  });
+  return get<HeadToHeadResponse>(`/compare?${params.toString()}`);
 }

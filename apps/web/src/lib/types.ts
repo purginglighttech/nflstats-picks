@@ -259,3 +259,38 @@ export interface SeasonStandingsResponse {
   standings: SeasonStanding[];
   updated_at: string;
 }
+
+/**
+ * Contracts: v1/competition.ts HeadToHeadResponseSchema.
+ * GET /api/v1/compare -> head-to-head game ledger.
+ */
+export interface HeadToHeadGame {
+  game_id: string;
+  week_id: string;
+  week_number: number;
+  away_team: string;
+  home_team: string;
+  away_score: number | null;
+  home_score: number | null;
+  status: string;
+  user_a_pick: string | null;
+  user_b_pick: string | null;
+  user_a_grade: 'win' | 'loss' | 'tie' | 'pending' | 'void' | null;
+  user_b_grade: 'win' | 'loss' | 'tie' | 'pending' | 'void' | null;
+  agreed: boolean;
+}
+
+export interface HeadToHeadResponse {
+  user_a: { user_id: string; display_name: string };
+  user_b: { user_id: string; display_name: string };
+  week_id: string | null;
+  season: number;
+  games: HeadToHeadGame[];
+  summary: {
+    games: number;
+    agreed: number;
+    disagreed: number;
+    user_a_disagreement_wins: number;
+    user_b_disagreement_wins: number;
+  };
+}
