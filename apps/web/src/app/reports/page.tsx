@@ -22,6 +22,8 @@ type LoadState =
   | { kind: 'error' }
   | { kind: 'ready'; reports: ReportListItem[] };
 
+const NO_REPORTS: ReportListItem[] = [];
+
 function metaLine(r: ReportListItem): string {
   const parts: string[] = [];
   if (r.season) parts.push(`Season ${r.season}`);
@@ -58,7 +60,10 @@ export default function ReportsPage() {
     };
   }, []);
 
-  const reports = state.kind === 'ready' ? state.reports : [];
+  const reports = useMemo(
+    () => (state.kind === 'ready' ? state.reports : NO_REPORTS),
+    [state]
+  );
 
   const typeOptions = useMemo(
     () =>

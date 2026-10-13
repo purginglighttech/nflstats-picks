@@ -6,8 +6,8 @@ import {
   getPublishedReport,
   getReportCitations,
   getReportEntries,
+  toReportListItem,
 } from "@/lib/reports";
-import { toListItem } from "../route";
 
 /**
  * GET /api/v1/reports/[id] — one published edition with its ordered
@@ -36,7 +36,7 @@ export const GET = withApi(
     return NextResponse.json(
       v1.ReportDetailResponseSchema.parse({
         report: {
-          ...toListItem(report),
+          ...toReportListItem(report),
           revision: report.revision,
           methodology_version: report.methodology_version,
           dataset_revision: report.dataset_revision,

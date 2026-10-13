@@ -108,3 +108,20 @@ export async function getReportCitations(
   );
   return rows;
 }
+
+/** Map a list/detail row to the API shape (dates as ISO strings). */
+export function toReportListItem(r: ReportListRow) {
+  return {
+    id: r.id,
+    report_type: r.report_type,
+    content_class: r.content_class,
+    title: r.title,
+    summary: r.summary,
+    season: r.season,
+    week_number: r.week_number,
+    week_label: r.week_label,
+    reporting_period: r.reporting_period,
+    generated_at: r.generated_at.toISOString(),
+    updated_at: r.updated_at.toISOString(),
+  };
+}
