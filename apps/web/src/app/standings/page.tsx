@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/EmptyState';
 import {
   ApiError,
@@ -27,6 +27,8 @@ type StandingsState =
       weekly: WeeklyStanding[];
       season: SeasonStanding[];
       seasonYear: number;
+      /** Client time of the last successful load/refresh (ISO). */
+      updatedAt: string;
     };
 
 function formatAccuracy(a: number | null): string {
@@ -129,6 +131,7 @@ export default function StandingsPage() {
           weekly: weeklyRes.standings,
           season: seasonRes.standings,
           seasonYear: seasonRes.season,
+          updatedAt: new Date().toISOString(),
         });
       } catch (err) {
         if (cancelled) return;
@@ -157,6 +160,50 @@ export default function StandingsPage() {
       // Keep the previous week's table; the failure is transient.
     }
   };
+
+  // Auto-refresh: standings change when an import grades games (e.g. the
+  // Tuesday rollover). Poll every minute while the page is open, skip
+  // while the tab is hidden, refresh immediately when it becomes visible
+  // again. Refresh failures keep the current table — never blank it.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  useEffect(() => {
+    const refresh = async () => {
+      const current = stateRef.current;
+      if (current.kind !== 'ready' || document.hidden) return;
+      try {
+        const [weeks, weeklyRes, seasonRes] = await Promise.all([
+          getWeeks(),
+          getWeeklyStandings(current.selectedWeekId),
+          getSeasonStandings(String(current.seasonYear)),
+        ]);
+        const latest = stateRef.current;
+        if (latest.kind !== 'ready') return;
+        // Don't clobber a week switch made while this fetch was in flight.
+        if (latest.selectedWeekId !== current.selectedWeekId) return;
+        setState({
+          ...latest,
+          weeks,
+          weekly: weeklyRes.standings,
+          season: seasonRes.standings,
+          seasonYear: seasonRes.season,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Transient failure: keep showing the current standings.
+      }
+    };
+    const timer = setInterval(() => void refresh(), 60_000);
+    const onVisible = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -230,6 +277,10 @@ export default function StandingsPage() {
             ) : (
               <StandingsTable rows={state.season} />
             )}
+            <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Auto-refreshes every minute · Last updated{' '}
+              {new Date(state.updatedAt).toLocaleTimeString()}
+            </p>
           </>
         )}
       </div>
