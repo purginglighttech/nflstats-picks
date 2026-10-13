@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/reports', label: 'Reports' },
   { href: '/standings', label: 'Standings' },
   { href: '/compare', label: 'Compare' },
+  { href: '/teams', label: 'Teams' },
   { href: '/forum', label: 'Forum' },
 ];
 

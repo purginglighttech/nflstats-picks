@@ -19,8 +19,10 @@ import type {
   RevealParticipantListResponse,
   SeasonStandingsResponse,
   SettingsPatch,
+  TeamDetailResponse,
   TeamFollow,
   TeamFollowOrderUpdate,
+  TeamsResponse,
   Week,
   WeekPicksResponse,
   WeeklyStandingsResponse,
@@ -297,4 +299,20 @@ export async function getHeadToHead(
     ...('week_id' in scope ? { week_id: scope.week_id } : { season: String(scope.season) }),
   });
   return get<HeadToHeadResponse>(`/compare?${params.toString()}`);
+}
+
+/**
+ * Teams index. Contracts: GET /api/v1/teams -> TeamsResponse
+ * (all 32 teams with records for the latest season).
+ */
+export async function getTeams(): Promise<TeamsResponse> {
+  return get<TeamsResponse>(`/teams`);
+}
+
+/**
+ * Team detail. Contracts: GET /api/v1/teams/[abbr] ->
+ * TeamDetailResponse (identity, schedule, leaders, pool pick record).
+ */
+export async function getTeam(abbr: string): Promise<TeamDetailResponse> {
+  return get<TeamDetailResponse>(`/teams/${encodeURIComponent(abbr)}`);
 }

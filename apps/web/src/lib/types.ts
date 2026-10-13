@@ -294,3 +294,67 @@ export interface HeadToHeadResponse {
     user_b_disagreement_wins: number;
   };
 }
+
+/**
+ * Contracts: v1/competition.ts TeamSummarySchema / TeamsResponseSchema /
+ * TeamDetailResponseSchema. GET /api/v1/teams, GET /api/v1/teams/[abbr].
+ */
+export interface TeamSummary {
+  abbreviation: string;
+  city: string;
+  name: string;
+  conference: 'AFC' | 'NFC';
+  division: string;
+  accent_light: string;
+  accent_dark: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  points_for: number;
+  points_against: number;
+}
+
+export interface TeamsResponse {
+  season: number;
+  teams: TeamSummary[];
+}
+
+export interface TeamScheduleGame {
+  game_id: string;
+  week_id: string;
+  week_number: number;
+  week_label: string;
+  scheduled_at: string;
+  status: string;
+  opponent: string;
+  is_home: boolean;
+  team_score: number | null;
+  opponent_score: number | null;
+  result: 'W' | 'L' | 'T' | null;
+}
+
+export interface TeamLeader {
+  player_name: string;
+  yards: number;
+  touchdowns: number;
+  receptions: number | null;
+}
+
+export interface TeamPoolRecord {
+  user_id: string;
+  display_name: string;
+  picked_for: { picks: number; wins: number; losses: number; ties: number };
+  picked_against: { picks: number; wins: number; losses: number; ties: number };
+}
+
+export interface TeamDetailResponse {
+  season: number;
+  team: TeamSummary;
+  schedule: TeamScheduleGame[];
+  leaders: {
+    passing: TeamLeader | null;
+    rushing: TeamLeader | null;
+    receiving: TeamLeader | null;
+  };
+  pool: TeamPoolRecord[];
+}

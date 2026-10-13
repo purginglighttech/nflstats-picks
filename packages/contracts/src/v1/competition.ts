@@ -391,3 +391,94 @@ export const HeadToHeadResponseSchema = z.object({
   }),
 });
 export type HeadToHeadResponse = z.infer<typeof HeadToHeadResponseSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Teams (GET /api/v1/teams, GET /api/v1/teams/[abbr])                 */
+/*                                                                     */
+/* Data-layer display only: identity, schedule/results, player         */
+/* leaders, and the pool's graded pick record. No analysis.            */
+/* ------------------------------------------------------------------ */
+
+export const TeamSummarySchema = z.object({
+  abbreviation: NflTeamSchema,
+  city: z.string(),
+  name: z.string(),
+  conference: z.enum(["AFC", "NFC"]),
+  division: z.string(),
+  accent_light: z.string(),
+  accent_dark: z.string(),
+  /** Final games in the response's season. */
+  wins: z.number().int().min(0),
+  losses: z.number().int().min(0),
+  ties: z.number().int().min(0),
+  points_for: z.number().int().min(0),
+  points_against: z.number().int().min(0),
+});
+export type TeamSummary = z.infer<typeof TeamSummarySchema>;
+
+/** GET /api/v1/teams */
+export const TeamsResponseSchema = z.object({
+  season: z.number().int().min(2000).max(2100),
+  teams: z.array(TeamSummarySchema),
+});
+export type TeamsResponse = z.infer<typeof TeamsResponseSchema>;
+
+export const TeamScheduleGameSchema = z.object({
+  game_id: EntityIdSchema,
+  week_id: EntityIdSchema,
+  week_number: z.number().int().min(1),
+  week_label: z.string(),
+  scheduled_at: IsoDateTimeSchema,
+  status: z.string(),
+  /** The other team's abbreviation. */
+  opponent: z.string(),
+  is_home: z.boolean(),
+  team_score: z.number().int().min(0).nullable(),
+  opponent_score: z.number().int().min(0).nullable(),
+  /** From this team's perspective; null unless the game is final. */
+  result: z.enum(["W", "L", "T"]).nullable(),
+});
+export type TeamScheduleGame = z.infer<typeof TeamScheduleGameSchema>;
+
+export const TeamLeaderSchema = z.object({
+  player_name: z.string(),
+  yards: z.number(),
+  touchdowns: z.number(),
+  /** Receptions for the receiving leader; null otherwise. */
+  receptions: z.number().nullable(),
+});
+export type TeamLeader = z.infer<typeof TeamLeaderSchema>;
+
+export const TeamPoolRecordSchema = z.object({
+  user_id: EntityIdSchema,
+  display_name: DisplayNameSchema,
+  /** Committed, graded picks that selected this team. */
+  picked_for: z.object({
+    picks: z.number().int().min(0),
+    wins: z.number().int().min(0),
+    losses: z.number().int().min(0),
+    ties: z.number().int().min(0),
+  }),
+  /** Committed, graded picks that selected this team's opponent. */
+  picked_against: z.object({
+    picks: z.number().int().min(0),
+    wins: z.number().int().min(0),
+    losses: z.number().int().min(0),
+    ties: z.number().int().min(0),
+  }),
+});
+export type TeamPoolRecord = z.infer<typeof TeamPoolRecordSchema>;
+
+/** GET /api/v1/teams/[abbr] */
+export const TeamDetailResponseSchema = z.object({
+  season: z.number().int().min(2000).max(2100),
+  team: TeamSummarySchema,
+  schedule: z.array(TeamScheduleGameSchema),
+  leaders: z.object({
+    passing: TeamLeaderSchema.nullable(),
+    rushing: TeamLeaderSchema.nullable(),
+    receiving: TeamLeaderSchema.nullable(),
+  }),
+  pool: z.array(TeamPoolRecordSchema),
+});
+export type TeamDetailResponse = z.infer<typeof TeamDetailResponseSchema>;
