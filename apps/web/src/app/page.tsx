@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
-import { TEAM_THEMES } from '@/lib/theme/teams';
+import { TeamQuickLook } from '@/components/TeamQuickLook';
 
 /**
  * Public homepage shell (Phase 1). Real content — news feed, report
@@ -70,30 +70,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Team quick-look shell */}
+      {/* Team quick-look: picker navigates to the team's page */}
       <section aria-labelledby="teams-heading" className="mt-12 max-w-xl">
         <h2 id="teams-heading" className="text-2xl font-bold tracking-tight">
           Team quick look
         </h2>
         <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
-          Pick a team to preview its season statistics panel.
+          Pick a team to open its page.
         </p>
-        <div className="mt-4">
-          <label htmlFor="team-select" className="field-label">
-            Team
-          </label>
-          <select id="team-select" className="select-input" disabled aria-describedby="team-select-hint">
-            <option value="">Select a team…</option>
-            {TEAM_THEMES.map((t) => (
-              <option key={t.teamId} value={t.teamId}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <p id="team-select-hint" className="field-hint">
-            Team pages arrive in a later phase; the selector is disabled until then.
-          </p>
-        </div>
+        <TeamQuickLook />
       </section>
     </div>
   );
