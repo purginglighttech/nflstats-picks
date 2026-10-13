@@ -379,3 +379,91 @@ export interface TeamDetailResponse {
   team_stats: TeamStats | null;
   pool: TeamPoolRecord[];
 }
+
+/* ---------------- Reports (editorial) ---------------- */
+
+export type ReportType =
+  | 'teams'
+  | 'quarterbacks'
+  | 'offense'
+  | 'defense'
+  | 'special_teams'
+  | 'outlet_roundup'
+  | 'game_final'
+  | 'news_briefing'
+  | 'personnel'
+  | 'post_week'
+  | 'wednesday_preview'
+  | 'injury_sweep'
+  | 'inactives'
+  | 'pregame_check';
+
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  teams: 'Power Rankings — Teams',
+  quarterbacks: 'Power Rankings — Quarterbacks',
+  offense: 'Power Rankings — Offense',
+  defense: 'Power Rankings — Defense',
+  special_teams: 'Power Rankings — Special Teams',
+  outlet_roundup: 'Outlet Rankings Roundup',
+  game_final: 'Final Game Report',
+  news_briefing: 'News Briefing',
+  personnel: 'Personnel Report',
+  post_week: 'Post-Week Review',
+  wednesday_preview: 'Wednesday Preview',
+  injury_sweep: 'Injury Sweep',
+  inactives: 'Inactives Briefing',
+  pregame_check: 'Pregame Check',
+};
+
+export type ReportContentClass = 'factual' | 'prediction' | 'opinion' | 'mixed';
+
+export interface ReportListItem {
+  id: string;
+  report_type: ReportType;
+  content_class: ReportContentClass;
+  title: string;
+  summary: string | null;
+  season: number | null;
+  week_number: number | null;
+  week_label: string | null;
+  reporting_period: string | null;
+  generated_at: string;
+  updated_at: string;
+}
+
+export interface ReportListResponse {
+  reports: ReportListItem[];
+}
+
+export type ReportBlockType = 'evidence' | 'interpretation' | 'summary';
+
+export interface ReportEntry {
+  entry_key: string;
+  position: number;
+  block_type: ReportBlockType;
+  heading: string | null;
+  body: string;
+}
+
+export interface ReportCitation {
+  claim_key: string | null;
+  url: string;
+  publisher: string | null;
+  corroboration_status:
+    | 'confirmed_multi_source'
+    | 'single_source_exception'
+    | 'not_applicable'
+    | null;
+  limitation_note: string | null;
+}
+
+export interface ReportDetailResponse {
+  report: ReportListItem & {
+    revision: number;
+    methodology_version: string | null;
+    dataset_revision: string | null;
+    pdf_asset_ref: string | null;
+  };
+  entries: ReportEntry[];
+  citations: ReportCitation[];
+}

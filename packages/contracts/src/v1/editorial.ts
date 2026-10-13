@@ -227,3 +227,115 @@ export const FeaturePayloadSchema = z.object({
   published_at: IsoDateTimeSchema.nullable(),
 });
 export type FeaturePayload = z.infer<typeof FeaturePayloadSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Reports archive + reader (wired to migration 003 tables)            */
+/* ------------------------------------------------------------------ */
+
+/** The report_type values of report_editions (migration 003). */
+export const ReportTypeSchema = z.enum([
+  "teams",
+  "quarterbacks",
+  "offense",
+  "defense",
+  "special_teams",
+  "outlet_roundup",
+  "game_final",
+  "news_briefing",
+  "personnel",
+  "post_week",
+  "wednesday_preview",
+  "injury_sweep",
+  "inactives",
+  "pregame_check",
+]);
+export type ReportType = z.infer<typeof ReportTypeSchema>;
+
+/** Display labels for report types (client-safe). */
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  teams: "Power Rankings — Teams",
+  quarterbacks: "Power Rankings — Quarterbacks",
+  offense: "Power Rankings — Offense",
+  defense: "Power Rankings — Defense",
+  special_teams: "Power Rankings — Special Teams",
+  outlet_roundup: "Outlet Rankings Roundup",
+  game_final: "Final Game Report",
+  news_briefing: "News Briefing",
+  personnel: "Personnel Report",
+  post_week: "Post-Week Review",
+  wednesday_preview: "Wednesday Preview",
+  injury_sweep: "Injury Sweep",
+  inactives: "Inactives Briefing",
+  pregame_check: "Pregame Check",
+};
+
+export const ReportContentClassSchema = z.enum([
+  "factual",
+  "prediction",
+  "opinion",
+  "mixed",
+]);
+export type ReportContentClass = z.infer<typeof ReportContentClassSchema>;
+
+/** One published edition in the archive list. */
+export const ReportListItemSchema = z.object({
+  id: EntityIdSchema,
+  report_type: ReportTypeSchema,
+  content_class: ReportContentClassSchema,
+  title: z.string().min(1).max(300),
+  summary: z.string().max(4000).nullable(),
+  season: z.number().int().min(2000).max(2100).nullable(),
+  week_number: z.number().int().min(1).max(22).nullable(),
+  week_label: z.string().max(40).nullable(),
+  reporting_period: z.string().max(120).nullable(),
+  generated_at: IsoDateTimeSchema,
+  updated_at: IsoDateTimeSchema,
+});
+export type ReportListItem = z.infer<typeof ReportListItemSchema>;
+
+/** GET /reports — every published edition, newest first. */
+export const ReportListResponseSchema = z.object({
+  reports: z.array(ReportListItemSchema),
+});
+export type ReportListResponse = z.infer<typeof ReportListResponseSchema>;
+
+export const ReportBlockTypeSchema = z.enum([
+  "evidence",
+  "interpretation",
+  "summary",
+]);
+export type ReportBlockType = z.infer<typeof ReportBlockTypeSchema>;
+
+/** One ordered block of an edition; body is markdown (subset renderer). */
+export const ReportEntrySchema = z.object({
+  entry_key: z.string().min(1).max(120),
+  position: z.number().int().min(0),
+  block_type: ReportBlockTypeSchema,
+  heading: z.string().max(300).nullable(),
+  body: z.string().min(1),
+});
+export type ReportEntry = z.infer<typeof ReportEntrySchema>;
+
+export const ReportCitationSchema = z.object({
+  claim_key: z.string().max(120).nullable(),
+  url: z.string().url().max(2048),
+  publisher: z.string().max(200).nullable(),
+  corroboration_status: z
+    .enum(["confirmed_multi_source", "single_source_exception", "not_applicable"])
+    .nullable(),
+  limitation_note: z.string().max(1000).nullable(),
+});
+export type ReportCitation = z.infer<typeof ReportCitationSchema>;
+
+/** GET /reports/[id] — one published edition with entries and citations. */
+export const ReportDetailResponseSchema = z.object({
+  report: ReportListItemSchema.extend({
+    revision: z.number().int().min(1),
+    methodology_version: z.string().max(32).nullable(),
+    dataset_revision: z.string().max(64).nullable(),
+    pdf_asset_ref: z.string().max(500).nullable(),
+  }),
+  entries: z.array(ReportEntrySchema),
+  citations: z.array(ReportCitationSchema),
+});
+export type ReportDetailResponse = z.infer<typeof ReportDetailResponseSchema>;

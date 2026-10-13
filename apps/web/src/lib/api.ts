@@ -16,6 +16,8 @@ import type {
   PickRevealSummary,
   Profile,
   ProfilePatch,
+  ReportDetailResponse,
+  ReportListResponse,
   RevealParticipantListResponse,
   SeasonStandingsResponse,
   SettingsPatch,
@@ -315,4 +317,20 @@ export async function getTeams(): Promise<TeamsResponse> {
  */
 export async function getTeam(abbr: string): Promise<TeamDetailResponse> {
   return get<TeamDetailResponse>(`/teams/${encodeURIComponent(abbr)}`);
+}
+
+/**
+ * Reports archive. Contracts: GET /api/v1/reports ->
+ * ReportListResponse (published editions only, newest first).
+ */
+export async function getReports(): Promise<ReportListResponse> {
+  return get<ReportListResponse>(`/reports`);
+}
+
+/**
+ * Report reader. Contracts: GET /api/v1/reports/[id] ->
+ * ReportDetailResponse (edition + ordered entries + citations).
+ */
+export async function getReport(id: string): Promise<ReportDetailResponse> {
+  return get<ReportDetailResponse>(`/reports/${encodeURIComponent(id)}`);
 }

@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
 import { TeamQuickLook } from '@/components/TeamQuickLook';
+import { LatestReports } from '@/components/LatestReports';
 
 /**
- * Public homepage shell (Phase 1). Real content — news feed, report
- * editions, team statistics — arrives with the Phase 6 content pipeline;
- * every module below is an honest placeholder until then.
+ * Public homepage. The team picker and Latest Reports modules are live;
+ * the Games of the Week teaser stays an honest placeholder until the
+ * first features edition publishes.
  */
 export default function HomePage() {
   return (
@@ -63,10 +64,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="mt-4">
-          <EmptyState
-            title="No reports published yet"
-            body="Power rankings, injury briefings, pregame checks, and post-week reviews will appear here as the reports pipeline comes online."
-          />
+          <LatestReports />
         </div>
       </section>
 
