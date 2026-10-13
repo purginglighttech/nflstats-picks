@@ -25,7 +25,7 @@ export interface ReportListRow {
 
 const LIST_COLUMNS = `
   e.id, e.report_type, e.content_class, e.title, e.summary,
-  s.year AS season, w.week_number, w.label AS week_label,
+  s.year AS season, w.number AS week_number, w.label AS week_label,
   e.reporting_period, e.generated_at, e.updated_at`;
 
 /** Every published edition, newest generated first. */
