@@ -469,6 +469,32 @@ export const TeamPoolRecordSchema = z.object({
 });
 export type TeamPoolRecord = z.infer<typeof TeamPoolRecordSchema>;
 
+export const TeamStatsSchema = z.object({
+  /** Final games with stored team stats in the response's season. */
+  games: z.number().int().min(0),
+  total_yards: z.number(),
+  passing_yards: z.number(),
+  rushing_yards: z.number(),
+  first_downs: z.number(),
+  third_down_conversions: z.number(),
+  third_down_attempts: z.number(),
+  /** Recomputed from season conversions/attempts — never an average of game percentages. Null with zero attempts. */
+  third_down_pct: z.number().min(0).max(1).nullable(),
+  red_zone_scores: z.number(),
+  red_zone_attempts: z.number(),
+  /** Recomputed from season scores/attempts. Null with zero attempts. */
+  red_zone_pct: z.number().min(0).max(1).nullable(),
+  /** total_yards / total offensive plays. Null with zero plays. */
+  yards_per_play: z.number().nullable(),
+  turnovers: z.number(),
+  sacks: z.number(),
+  penalties: z.number(),
+  penalty_yards: z.number(),
+  /** Mean time of possession per game, in seconds. Null with no data. */
+  possession_seconds_avg: z.number().nullable(),
+});
+export type TeamStats = z.infer<typeof TeamStatsSchema>;
+
 /** GET /api/v1/teams/[abbr] */
 export const TeamDetailResponseSchema = z.object({
   season: z.number().int().min(2000).max(2100),
@@ -479,6 +505,9 @@ export const TeamDetailResponseSchema = z.object({
     rushing: TeamLeaderSchema.nullable(),
     receiving: TeamLeaderSchema.nullable(),
   }),
+  /** Season team-stat totals; null when the team has no final games with stats. */
+  team_stats: TeamStatsSchema.nullable(),
   pool: z.array(TeamPoolRecordSchema),
 });
 export type TeamDetailResponse = z.infer<typeof TeamDetailResponseSchema>;
+

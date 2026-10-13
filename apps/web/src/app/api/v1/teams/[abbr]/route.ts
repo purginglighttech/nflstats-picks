@@ -8,6 +8,7 @@ import {
   getTeamLeader,
   getTeamPoolRecords,
   getTeamSchedule,
+  getTeamStats,
   getTeamsWithRecords,
 } from "@/lib/teams";
 
@@ -33,13 +34,14 @@ export const GET = withApi(
       throw new ApiErrorException(404, "team_not_found", `No such team: ${ctx.params.abbr}.`);
     }
 
-    const [records, schedule, passing, rushing, receiving, pool] = await Promise.all([
+    const [records, schedule, passing, rushing, receiving, pool, teamStats] = await Promise.all([
       getTeamsWithRecords(season),
       getTeamSchedule(team.id, season),
       getTeamLeader(team.id, season, "passing"),
       getTeamLeader(team.id, season, "rushing"),
       getTeamLeader(team.id, season, "receiving"),
       getTeamPoolRecords(team.id, season),
+      getTeamStats(team.id, season),
     ]);
     const summary = records.find((r) => r.id === team.id);
 
@@ -81,6 +83,7 @@ export const GET = withApi(
               : null,
         })),
         leaders: { passing, rushing, receiving },
+        team_stats: teamStats,
         pool: pool.map((p) => ({
           user_id: p.user_id,
           display_name: p.display_name,

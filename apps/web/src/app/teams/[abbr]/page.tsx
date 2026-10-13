@@ -5,10 +5,77 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { EmptyState } from '@/components/EmptyState';
 import { ApiError, getTeam } from '@/lib/api';
-import type { TeamDetailResponse, TeamLeader } from '@/lib/types';
+import type { TeamDetailResponse, TeamLeader, TeamStats } from '@/lib/types';
 
 function recordLine(r: { wins: number; losses: number; ties: number }): string {
   return r.ties > 0 ? `${r.wins}–${r.losses}–${r.ties}` : `${r.wins}–${r.losses}`;
+}
+
+function formatPossession(seconds: number | null): string {
+  if (seconds === null) return '—';
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function formatPct(pct: number | null): string {
+  if (pct === null) return '—';
+  return `${(pct * 100).toFixed(1)}%`;
+}
+
+function StatsBlock({ stats }: { stats: TeamStats }) {
+  const per = (total: number) =>
+    stats.games > 0 ? (total / stats.games).toFixed(1) : '—';
+  const rows: Array<{ label: string; total: string; perGame: string }> = [
+    { label: 'Total yards', total: Math.round(stats.total_yards).toLocaleString(), perGame: per(stats.total_yards) },
+    { label: 'Passing yards (net)', total: Math.round(stats.passing_yards).toLocaleString(), perGame: per(stats.passing_yards) },
+    { label: 'Rushing yards', total: Math.round(stats.rushing_yards).toLocaleString(), perGame: per(stats.rushing_yards) },
+    { label: 'First downs', total: String(Math.round(stats.first_downs)), perGame: per(stats.first_downs) },
+    {
+      label: 'Yards per play',
+      total: stats.yards_per_play !== null ? stats.yards_per_play.toFixed(1) : '—',
+      perGame: '',
+    },
+    {
+      label: 'Third down',
+      total: `${Math.round(stats.third_down_conversions)}–${Math.round(stats.third_down_attempts)} (${formatPct(stats.third_down_pct)})`,
+      perGame: '',
+    },
+    {
+      label: 'Red zone',
+      total: `${Math.round(stats.red_zone_scores)}–${Math.round(stats.red_zone_attempts)} (${formatPct(stats.red_zone_pct)})`,
+      perGame: '',
+    },
+    { label: 'Turnovers', total: String(Math.round(stats.turnovers)), perGame: per(stats.turnovers) },
+    { label: 'Sacks', total: String(Math.round(stats.sacks)), perGame: per(stats.sacks) },
+    {
+      label: 'Penalties',
+      total: `${Math.round(stats.penalties)} · ${Math.round(stats.penalty_yards)} yds`,
+      perGame: '',
+    },
+    { label: 'Time of possession (avg)', total: formatPossession(stats.possession_seconds_avg), perGame: '' },
+  ];
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full max-w-2xl text-sm">
+        <thead>
+          <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+            <th className="py-2 pr-4 text-left font-semibold">Stat</th>
+            <th className="py-2 pr-4 text-right font-semibold">Season</th>
+            <th className="py-2 text-right font-semibold">Per game</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-b" style={{ borderColor: 'var(--border)' }}>
+              <td className="py-2 pr-4" style={{ color: 'var(--text-muted)' }}>{r.label}</td>
+              <td className="py-2 pr-4 text-right font-medium">{r.total}</td>
+              <td className="py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.perGame}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function LeaderCard({
@@ -19,8 +86,7 @@ function LeaderCard({
   title: string;
   leader: TeamLeader | null;
   extraLabel?: string;
-}) {
-  return (
+}) {  return (
     <div
       className="rounded-lg border p-4"
       style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
@@ -83,7 +149,7 @@ export default function TeamPage() {
     );
   }
 
-  const { team, schedule, leaders, pool } = data;
+  const { team, schedule, leaders, pool, team_stats } = data;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -113,6 +179,13 @@ export default function TeamPage() {
         <LeaderCard title="Rushing" leader={leaders.rushing} />
         <LeaderCard title="Receiving" leader={leaders.receiving} extraLabel="rec" />
       </div>
+
+      {team_stats ? (
+        <>
+          <h2 className="mt-10 text-xl font-bold">Season stats</h2>
+          <StatsBlock stats={team_stats} />
+        </>
+      ) : null}
 
       <h2 className="mt-10 text-xl font-bold">Schedule</h2>
       <div className="mt-3 overflow-x-auto">

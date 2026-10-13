@@ -347,6 +347,26 @@ export interface TeamPoolRecord {
   picked_against: { picks: number; wins: number; losses: number; ties: number };
 }
 
+export interface TeamStats {
+  games: number;
+  total_yards: number;
+  passing_yards: number;
+  rushing_yards: number;
+  first_downs: number;
+  third_down_conversions: number;
+  third_down_attempts: number;
+  third_down_pct: number | null;
+  red_zone_scores: number;
+  red_zone_attempts: number;
+  red_zone_pct: number | null;
+  yards_per_play: number | null;
+  turnovers: number;
+  sacks: number;
+  penalties: number;
+  penalty_yards: number;
+  possession_seconds_avg: number | null;
+}
+
 export interface TeamDetailResponse {
   season: number;
   team: TeamSummary;
@@ -356,5 +376,6 @@ export interface TeamDetailResponse {
     rushing: TeamLeader | null;
     receiving: TeamLeader | null;
   };
+  team_stats: TeamStats | null;
   pool: TeamPoolRecord[];
 }

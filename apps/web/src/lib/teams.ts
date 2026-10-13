@@ -249,3 +249,106 @@ export async function getTeamPoolRecords(
   );
   return rows;
 }
+
+export interface TeamStatsRow {
+  games: number;
+  total_yards: number;
+  passing_yards: number;
+  rushing_yards: number;
+  first_downs: number;
+  third_down_conversions: number;
+  third_down_attempts: number;
+  third_down_pct: number | null;
+  red_zone_scores: number;
+  red_zone_attempts: number;
+  red_zone_pct: number | null;
+  yards_per_play: number | null;
+  turnovers: number;
+  sacks: number;
+  penalties: number;
+  penalty_yards: number;
+  possession_seconds_avg: number | null;
+}
+
+interface TeamStatsSums {
+  games: number;
+  total_yards: number;
+  passing_yards: number;
+  rushing_yards: number;
+  first_downs: number;
+  third_down_conversions: number;
+  third_down_attempts: number;
+  red_zone_scores: number;
+  red_zone_attempts: number;
+  offensive_plays: number;
+  turnovers: number;
+  sacks: number;
+  penalties: number;
+  penalty_yards: number;
+  possession_seconds: number;
+  possession_games: number;
+}
+
+/**
+ * Season team-stat totals from team_game_stats over final games.
+ * Rates are recomputed from season components (conversions/attempts,
+ * yards/plays) — never averaged from per-game percentages.
+ * Returns null when the team has no final games with stored stats.
+ */
+export async function getTeamStats(
+  teamId: string,
+  seasonYear: number
+): Promise<TeamStatsRow | null> {
+  const sums = await queryOne<TeamStatsSums>(
+    `SELECT COUNT(DISTINCT ts.game_id)::int AS games,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'totalYards'), 0)::double precision AS total_yards,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'netPassingYards'), 0)::double precision AS passing_yards,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'rushingYards'), 0)::double precision AS rushing_yards,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'firstDowns'), 0)::double precision AS first_downs,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'third_down_conversions'), 0)::double precision AS third_down_conversions,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'third_down_attempts'), 0)::double precision AS third_down_attempts,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'red_zone_scores'), 0)::double precision AS red_zone_scores,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'red_zone_attempts'), 0)::double precision AS red_zone_attempts,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'totalOffensivePlays'), 0)::double precision AS offensive_plays,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'turnovers'), 0)::double precision AS turnovers,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'sacks'), 0)::double precision AS sacks,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'penalties'), 0)::double precision AS penalties,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'penalty_yards'), 0)::double precision AS penalty_yards,
+            COALESCE(SUM(ts.metric_value) FILTER (WHERE ts.metric_key = 'possessionTime'), 0)::double precision AS possession_seconds,
+            COUNT(*) FILTER (WHERE ts.metric_key = 'possessionTime')::int AS possession_games
+     FROM team_game_stats ts
+     JOIN games g ON g.id = ts.game_id
+     JOIN weeks w ON w.id = g.week_id
+     JOIN seasons s ON s.id = w.season_id
+     WHERE ts.team_id = $1
+       AND s.league = 'NFL' AND s.year = $2
+       AND g.status = 'final'`,
+    [teamId, seasonYear]
+  );
+  if (!sums || sums.games === 0) return null;
+  return {
+    games: sums.games,
+    total_yards: sums.total_yards,
+    passing_yards: sums.passing_yards,
+    rushing_yards: sums.rushing_yards,
+    first_downs: sums.first_downs,
+    third_down_conversions: sums.third_down_conversions,
+    third_down_attempts: sums.third_down_attempts,
+    third_down_pct:
+      sums.third_down_attempts > 0
+        ? sums.third_down_conversions / sums.third_down_attempts
+        : null,
+    red_zone_scores: sums.red_zone_scores,
+    red_zone_attempts: sums.red_zone_attempts,
+    red_zone_pct:
+      sums.red_zone_attempts > 0 ? sums.red_zone_scores / sums.red_zone_attempts : null,
+    yards_per_play:
+      sums.offensive_plays > 0 ? sums.total_yards / sums.offensive_plays : null,
+    turnovers: sums.turnovers,
+    sacks: sums.sacks,
+    penalties: sums.penalties,
+    penalty_yards: sums.penalty_yards,
+    possession_seconds_avg:
+      sums.possession_games > 0 ? sums.possession_seconds / sums.possession_games : null,
+  };
+}
