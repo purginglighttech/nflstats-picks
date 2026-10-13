@@ -165,7 +165,7 @@ export function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
+        <nav aria-label="Primary" className="hidden min-w-0 flex-1 items-center gap-1 xl:flex">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -199,7 +199,7 @@ export function Header() {
           {/* Mobile hamburger */}
           <button
             type="button"
-            className="nav-link lg:hidden"
+            className="nav-link xl:hidden"
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -217,7 +217,7 @@ export function Header() {
         <nav
           id="mobile-nav"
           aria-label="Primary"
-          className="border-t px-4 py-3 lg:hidden"
+          className="border-t px-4 py-3 xl:hidden"
           style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
         >
           <ul className="flex flex-col gap-1">

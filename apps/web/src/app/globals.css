@@ -247,7 +247,7 @@ body {
 .nav-link {
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.6rem;
   border-radius: 0.5rem;
   color: var(--text);
   text-decoration: none;
