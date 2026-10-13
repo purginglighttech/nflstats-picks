@@ -16,7 +16,14 @@
 //
 // Usage:
 //   DATABASE_URL=... node db/publish-report.mjs --list
+//   DATABASE_URL=... node db/publish-report.mjs --show <uuid>
 //   DATABASE_URL=... node db/publish-report.mjs --id <uuid> [--approve] [--dry-run]
+//
+// --show prints the edition's full stored content (every entry and
+// citation) for audit before approval: the reviewer reads exactly what
+// is in the database, not the source file it was imported from. It is
+// read-only and works at any status, so published editions can be
+// audited after the fact too.
 
 import pg from 'pg';
 
@@ -28,7 +35,7 @@ function databaseUrl() {
 
 function usage() {
   console.error(
-    'usage: node db/publish-report.mjs (--list | --id <uuid> [--approve]) [--dry-run]'
+    'usage: node db/publish-report.mjs (--list | --show <uuid> | --id <uuid> [--approve]) [--dry-run]'
   );
   process.exit(2);
 }
@@ -38,13 +45,14 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--id') out.id = argv[++i];
+    else if (a === '--show') out.show = argv[++i];
     else if (a === '--approve') out.approve = true;
     else if (a === '--list') out.list = true;
     else if (a === '--dry-run') out.dryRun = true;
     else usage();
   }
-  if (!out.list && !out.id) usage();
-  if (out.list && out.id) usage();
+  const modes = [out.list, out.id != null, out.show != null].filter(Boolean).length;
+  if (modes !== 1) usage();
   return out;
 }
 
@@ -77,6 +85,71 @@ async function main() {
             `season ${row.season ?? '-'} week ${row.week ?? '-'}  ` +
             `${row.public_approval_required ? '[approval required] ' : ''}"${row.title}"`
         );
+      }
+      return;
+    }
+
+    if (args.show) {
+      const er = await client.query(
+        `SELECT e.id, e.report_type, e.content_class, e.title, e.summary,
+                e.status, e.public_approval_required, e.revision,
+                e.reporting_period, e.methodology_version, e.dataset_revision,
+                s.year AS season, w.number AS week
+           FROM report_editions e
+           LEFT JOIN seasons s ON s.id = e.season_id
+           LEFT JOIN weeks w ON w.id = e.week_id
+          WHERE e.id = $1`,
+        [args.show]
+      );
+      if (er.rows.length === 0) fail(`no edition with id ${args.show}`);
+      const ed = er.rows[0];
+      console.log(`# ${ed.title}`);
+      console.log(
+        `${ed.report_type} · ${ed.content_class} · status '${ed.status}' · ` +
+          `approval ${ed.public_approval_required ? 'REQUIRED' : 'not required'} · revision ${ed.revision}`
+      );
+      const scope = [];
+      if (ed.season != null) scope.push(`Season ${ed.season}`);
+      if (ed.week != null) scope.push(`Week ${ed.week}`);
+      if (ed.reporting_period) scope.push(ed.reporting_period);
+      if (scope.length > 0) console.log(scope.join(' · '));
+      const prov = [];
+      if (ed.methodology_version) prov.push(`Methodology ${ed.methodology_version}`);
+      if (ed.dataset_revision) prov.push(`Dataset ${ed.dataset_revision}`);
+      if (prov.length > 0) console.log(prov.join(' · '));
+      if (ed.summary) console.log(`\nSummary: ${ed.summary}`);
+
+      const entries = await client.query(
+        `SELECT entry_key, block_type, heading, body FROM report_entries
+          WHERE report_edition_id = $1 ORDER BY position ASC`,
+        [ed.id]
+      );
+      entries.rows.forEach((e, i) => {
+        console.log(
+          `\n--- [${i + 1}] ${e.block_type} · ${e.entry_key}` +
+            (e.heading ? ` — "${e.heading}"` : '')
+        );
+        console.log(e.body);
+      });
+
+      const cites = await client.query(
+        `SELECT c.claim_key, c.url, c.publisher, c.corroboration_status,
+                c.limitation_note, en.entry_key AS entry_key
+           FROM source_citations c
+           LEFT JOIN report_entries en ON en.id = c.report_entry_id
+          WHERE c.report_edition_id = $1
+          ORDER BY c.created_at ASC`,
+        [ed.id]
+      );
+      if (cites.rows.length > 0) {
+        console.log('\nCitations:');
+        for (const c of cites.rows) {
+          const where = [c.entry_key, c.claim_key].filter(Boolean).join(' · ');
+          console.log(`  -${where ? ` [${where}]` : ''} ${c.publisher ?? ''} ${c.url}`);
+          if (c.corroboration_status)
+            console.log(`    Corroboration: ${c.corroboration_status}`);
+          if (c.limitation_note) console.log(`    Note: ${c.limitation_note}`);
+        }
       }
       return;
     }
