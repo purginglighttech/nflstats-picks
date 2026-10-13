@@ -2,8 +2,10 @@ name: Weekly NFL import
 
 on:
   schedule:
-    # Tuesdays 13:00 UTC = 6:00 AM PDT — before the Tuesday picks breakdown.
-    - cron: '0 13 * * 2'
+    # Tuesdays 13:07 UTC ≈ 6:07 AM PDT — before the Tuesday picks breakdown.
+    # Off the hour on purpose: GitHub's scheduler is most congested (and most
+    # likely to delay or drop a run) at minute 0; the 2026-10-13 13:00 run never fired.
+    - cron: '7 13 * * 2'
   workflow_dispatch:
 
 jobs:
